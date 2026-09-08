@@ -37,24 +37,33 @@ def generate_plan(
     recent_lessons = memory.get_recent_lessons(k=5)
     elites_summary = memory.map_elites.summary()
 
+    parent_section = ""
+    if parent:
+        parent_section = f"""CURRENT STATE:
+- Parent Fitness: {parent.fitness:.1f} (Cubic: {parent.all_cubic}, Girth: {parent.girth})
+- Current MAP-Elites Coverage:
+{elites_summary}
+
+PARENT GENERATOR CODE:
+```python
+{parent.code}
+```"""
+    else:
+        parent_section = f"""CURRENT STATE:
+- Initiating foundational exploration from mathematical principles.
+- Current MAP-Elites Coverage:
+{elites_summary}"""
+
     prompt = f"""You are the Lead Theoretical Mathematician in a LoongFlow PES agent attacking Erdős Problem #64 (The Erdős–Gyárfás Conjecture).
 
 OBJECTIVE:
 Find a 3-regular (cubic) graph with NO cycles of length 2^k (no C4, no C8, no C16, no C32).
 The construction MUST be parameterized by the target vertex count `n` (which is even, e.g. n={target_n}).
 
-CURRENT STATE:
-- Parent Fitness: {parent.fitness:.1f} (Cubic: {parent.all_cubic}, Girth: {parent.girth})
-- Current MAP-Elites Coverage:
-{elites_summary}
+{parent_section}
 
 PERSISTENT EXPERIENTIAL MEMORY (Lessons Learned from Past Failures):
 {recent_lessons}
-
-PARENT GENERATOR CODE:
-```python
-{parent.code}
-```
 
 TASK FOR PLANNER:
 Do NOT write Python code yet. Formulate an explicit, rigorous MATHEMATICAL BLUEPRINT for the Executor.

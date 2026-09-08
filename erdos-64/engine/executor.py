@@ -125,11 +125,12 @@ Output ONLY the Python code in a ```python ... ``` block. No markdown explanatio
     code = extract_python_code(raw_code)
 
     logger.info("Evaluating synthesized code across test sizes %s via Rust verifier_64...", test_ns)
+    parent_id = parent.id if parent else "root"
     program = evaluate_graph_code(
         code=code,
-        program_id=f"pes_{parent.id}_child",
+        program_id=f"pes_{parent_id}_child",
         test_ns=test_ns,
-        parent_id=parent.id,
+        parent_id=parent_id,
     )
 
     # Hybrid Polish: If candidate is strictly cubic and has not yet achieved counterexample status,

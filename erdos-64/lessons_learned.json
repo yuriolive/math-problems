@@ -52,5 +52,23 @@
     "failure_mode": "High-degree vertex adjacency and low cubic density",
     "lesson": "By Bisch's formally verified Lean 4 theorem, every minimal counterexample satisfies |V3| >= (2/3)|V| and all vertices of degree >= 4 form an independent set (never adjacent). Any search over non-cubic graphs must enforce that degree >= 4 vertices are only adjacent to cubic vertices.",
     "cycle_len": 0
+  },
+  {
+    "family": "Asymmetric Coprime-Orbit Bipartite Graph (ACOB-Graph)",
+    "failure_mode": "Fixed-point matching collision between identity matching and affine matching creating duplicate edges",
+    "lesson": "Affine permutations \u00cf\u20ac(x) = ax + b mod m with gcd(a - 1, m) = 1 always possess a fixed point where \u00cf\u20ac(x) = x, causing collisions with the identity matching \u00cf\u20ac_1(x) = x; ensure (a - 1)x + b \u00e2\u2030\u00a2 0 (mod m) for all domain elements to prevent multi-edges and preserve strict 3-regularity.",
+    "cycle_len": 0
+  },
+  {
+    "family": "Anti-Dyadic Coprime-Orbit 3-Factor Graph (ADCO-3FG)",
+    "failure_mode": "Misaligned block partition boundaries generated a 2-cycle in composite permutation sigma_23 (inducing C4), and ad-hoc boundary repair shifts broke matching bijectivity and cubic regularity.",
+    "lesson": "Piecewise block-cyclic permutations create uncoordinated boundary inversions that produce short 2-cycles in composite 2-factors, while localized ad-hoc repairs violate global matching bijectivity; cycle-free 3-regular constructions must instead be derived from globally coordinated algebraic structures, such as transitive Cayley generators or voltage graph lifts.",
+    "cycle_len": 0
+  },
+  {
+    "family": "Odd-Orbit Dyad-Free Bipartite 3-Factor Graph (OODF-B3FG)",
+    "failure_mode": "Affine chord generator fixed points and ill-defined cross-block exchanges creating multi-edge collisions and breaking 3-regularity",
+    "lesson": "All factor matchings must be strictly pairwise deranged permutations ($(\\pi_i^{-1} \\circ \\pi_j)(x) \\neq x$ for all $i \\neq j$ and all $x$) to prevent multi-edge collapses; avoid affine maps with $s \\not\\equiv 1$ whose modular fixed points violate 3-regularity.",
+    "cycle_len": 0
   }
 ]

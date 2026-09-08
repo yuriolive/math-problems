@@ -51,7 +51,7 @@ def run_loongflow(
 
     memory = EvolutionaryMemory()
 
-    # 1. Seed the MAP-Elites archive with known baseline constructions
+    # 1. Seed the MAP-Elites archive with foundational graph families
     print("\n[Phase 0] Seeding MAP-Elites archive with foundational graph families...")
     seeds = get_seed_generators()
     for name, code in seeds.items():
@@ -59,6 +59,30 @@ def run_loongflow(
         is_new = memory.map_elites.add(prog, prog.girth, prog.diameter, prog.bipartite)
         status = "✨ NEW NICHE" if is_new else "Existing"
         print(f"  • Seed '{name}': Fitness={prog.fitness:.1f}, Girth={prog.girth}, Diam={prog.diameter}, BP={prog.bipartite} [{status}]")
+
+    # Load GPU Swarm elite candidate if available
+    swarm_seed_path = Path(__file__).resolve().parent.parent / "cuda" / "best_swarm_graph.json"
+    if swarm_seed_path.is_file():
+        try:
+            import json
+            with open(swarm_seed_path, "r", encoding="utf-8") as f:
+                swarm_data = json.load(f)
+            adj = swarm_data.get("adj", [])
+            code = f'''def generate_graph(n: int) -> dict:
+    adj = {adj}
+    if n == {len(adj)}:
+        return {{"n": {len(adj)}, "adj": adj}}
+    res = [[] for _ in range(n)]
+    for i in range(n):
+        res[i].extend([(i + 1) % n, (i - 1 + n) % n, (i + n // 2) % n])
+    return {{"n": n, "adj": res}}
+'''
+            prog = evaluate_graph_code(code, program_id="gpu_swarm_elite_32", test_ns=test_ns)
+            is_new = memory.map_elites.add(prog, prog.girth, prog.diameter, prog.bipartite)
+            status = "✨ NEW NICHE" if is_new else "Existing"
+            print(f"  • Seed 'gpu_swarm_elite_32': Fitness={prog.fitness:.1f}, Girth={prog.girth}, Diam={prog.diameter}, BP={prog.bipartite} [{status}]")
+        except Exception as e:
+            logger.warning("Could not load GPU swarm seed: %s", e)
 
     print(f"\nArchive populated with {memory.map_elites.coverage()} initial behavioral niches.")
     print(memory.get_recent_lessons(k=3))

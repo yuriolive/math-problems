@@ -196,7 +196,7 @@ __device__ int compute_energy(const uint64_t* adj, int n, int& c4, int& c8, int&
     return 0; // True counterexample: C4=0, C8=0, C16=0, C32=0!
 }
 
-// Swarm simulated annealing kernel supporting seed graphs and best-graph tracking
+// Swarm simulated annealing kernel supporting seed graphs, diverse temperatures, and ILS
 __global__ void swarm_search_kernel(
     int n,
     int iterations_per_thread,
@@ -204,8 +204,8 @@ __global__ void swarm_search_kernel(
     float cooling_rate,
     int* d_found_flag,
     uint64_t* d_winning_adj,
-    int* d_best_energy,
-    uint64_t* d_best_adj,
+    int* d_all_best_energy,
+    uint64_t* d_all_best_adj,
     const uint64_t* d_seed_adj,
     int has_seed
 ) {
@@ -222,7 +222,7 @@ __global__ void swarm_search_kernel(
             adj[i] = d_seed_adj[i];
         }
         // Thread 0 keeps exact seed; other threads perturb with small 2-opt warmup
-        int perturb = tid % 8;
+        int perturb = tid % 16;
         for (int p = 0; p < perturb; ++p) {
             int u = curand(&rng) % n;
             uint64_t u_nbrs = adj[u];
@@ -301,10 +301,23 @@ __global__ void swarm_search_kernel(
     int c4, c8, c16, c32;
     int energy = compute_energy(adj, n, c4, c8, c16, c32);
 
-    float T = initial_temp;
+    int local_best_energy = energy;
+    uint64_t local_best_adj[MAX_V];
+    for (int i = 0; i < n; ++i) local_best_adj[i] = adj[i];
+    int steps_since_improvement = 0;
+
+    // Diverse temperatures across threads (RTX 4070 Super parallel tempering spectrum):
+    // Some threads cold/greedy (T=0.4), some medium (T=4.0), some hot (T=20.0)
+    float temp_mult = 0.05f + 2.5f * ((float)(tid % 128) / 127.0f);
+    float thread_initial_temp = initial_temp * temp_mult;
+    float T = thread_initial_temp;
 
     for (int step = 0; step < iterations_per_thread; ++step) {
-        if (*d_found_flag) return;
+        if (*d_found_flag) {
+            d_all_best_energy[tid] = local_best_energy;
+            for (int i = 0; i < n; ++i) d_all_best_adj[tid * n + i] = local_best_adj[i];
+            return;
+        }
 
         int u = curand(&rng) % n;
         uint64_t u_nbrs = adj[u];
@@ -361,13 +374,21 @@ __global__ void swarm_search_kernel(
             c16 = new_c16;
             c32 = new_c32;
 
+            if (energy < local_best_energy) {
+                local_best_energy = energy;
+                for (int i = 0; i < n; ++i) local_best_adj[i] = adj[i];
+                steps_since_improvement = 0;
+            } else {
+                steps_since_improvement++;
+            }
+
             if (energy == 0) {
                 atomicExch(d_found_flag, 1);
                 for (int i = 0; i < n; ++i) {
                     d_winning_adj[i] = adj[i];
-                    d_best_adj[i] = adj[i];
+                    d_all_best_adj[tid * n + i] = adj[i];
                 }
-                atomicMin(d_best_energy, 0);
+                d_all_best_energy[tid] = 0;
                 return;
             }
         } else {
@@ -375,16 +396,23 @@ __global__ void swarm_search_kernel(
             adj[n2_a] &= ~(1ULL << n2_b); adj[n2_b] &= ~(1ULL << n2_a);
             adj[u] |= (1ULL << v); adj[v] |= (1ULL << u);
             adj[x] |= (1ULL << y); adj[y] |= (1ULL << x);
+            steps_since_improvement++;
         }
 
         T *= cooling_rate;
+
+        // Iterated Local Search (ILS): if stagnated for 2000 steps, snap back to best and reheat
+        if (steps_since_improvement >= 2000) {
+            for (int i = 0; i < n; ++i) adj[i] = local_best_adj[i];
+            energy = local_best_energy;
+            T = thread_initial_temp * 0.7f;
+            steps_since_improvement = 0;
+        }
     }
 
-    int prev_best = atomicMin(d_best_energy, energy);
-    if (energy <= prev_best) {
-        for (int i = 0; i < n; ++i) {
-            d_best_adj[i] = adj[i];
-        }
+    d_all_best_energy[tid] = local_best_energy;
+    for (int i = 0; i < n; ++i) {
+        d_all_best_adj[tid * n + i] = local_best_adj[i];
     }
 }
 
@@ -486,25 +514,22 @@ int main(int argc, char** argv) {
     }
 
     int* d_found_flag;
-    int* d_best_energy;
+    int* d_all_best_energy;
     uint64_t* d_winning_adj;
-    uint64_t* d_best_adj;
+    uint64_t* d_all_best_adj;
     uint64_t* d_seed_adj = nullptr;
 
     cudaMalloc(&d_found_flag, sizeof(int));
-    cudaMalloc(&d_best_energy, sizeof(int));
+    cudaMalloc(&d_all_best_energy, sizeof(int) * total_threads);
     cudaMalloc(&d_winning_adj, sizeof(uint64_t) * n);
-    cudaMalloc(&d_best_adj, sizeof(uint64_t) * n);
+    cudaMalloc(&d_all_best_adj, sizeof(uint64_t) * n * total_threads);
 
     if (has_seed) {
         cudaMalloc(&d_seed_adj, sizeof(uint64_t) * n);
         cudaMemcpy(d_seed_adj, seed_adj.data(), sizeof(uint64_t) * n, cudaMemcpyHostToDevice);
-        cudaMemcpy(d_best_adj, seed_adj.data(), sizeof(uint64_t) * n, cudaMemcpyHostToDevice);
     }
 
     cudaMemset(d_found_flag, 0, sizeof(int));
-    int initial_energy = 999999;
-    cudaMemcpy(d_best_energy, &initial_energy, sizeof(int), cudaMemcpyHostToDevice);
 
     int blockSize = 256;
     int numBlocks = (total_threads + blockSize - 1) / blockSize;
@@ -512,7 +537,7 @@ int main(int argc, char** argv) {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     swarm_search_kernel<<<numBlocks, blockSize>>>(
-        n, iterations, 8.0f, 0.9995f, d_found_flag, d_winning_adj, d_best_energy, d_best_adj, d_seed_adj, has_seed
+        n, iterations, 8.0f, 0.9997f, d_found_flag, d_winning_adj, d_all_best_energy, d_all_best_adj, d_seed_adj, has_seed
     );
     cudaDeviceSynchronize();
 
@@ -520,15 +545,26 @@ int main(int argc, char** argv) {
     double duration_ms = std::chrono::duration<double, std::milli>(end_time - start_time).count();
 
     int h_found = 0;
-    int h_best_energy = 0;
     cudaMemcpy(&h_found, d_found_flag, sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(&h_best_energy, d_best_energy, sizeof(int), cudaMemcpyDeviceToHost);
+
+    std::vector<int> h_energies(total_threads);
+    cudaMemcpy(h_energies.data(), d_all_best_energy, sizeof(int) * total_threads, cudaMemcpyDeviceToHost);
+
+    int best_tid = 0;
+    int h_best_energy = h_energies[0];
+    for (int t = 1; t < total_threads; ++t) {
+        if (h_energies[t] < h_best_energy) {
+            h_best_energy = h_energies[t];
+            best_tid = t;
+        }
+    }
 
     std::vector<uint64_t> final_adj(n);
     if (h_found) {
         cudaMemcpy(final_adj.data(), d_winning_adj, sizeof(uint64_t) * n, cudaMemcpyDeviceToHost);
+        h_best_energy = 0;
     } else {
-        cudaMemcpy(final_adj.data(), d_best_adj, sizeof(uint64_t) * n, cudaMemcpyDeviceToHost);
+        cudaMemcpy(final_adj.data(), d_all_best_adj + best_tid * n, sizeof(uint64_t) * n, cudaMemcpyDeviceToHost);
     }
 
     if (json_only) {
@@ -575,9 +611,9 @@ int main(int argc, char** argv) {
     }
 
     cudaFree(d_found_flag);
-    cudaFree(d_best_energy);
+    cudaFree(d_all_best_energy);
     cudaFree(d_winning_adj);
-    cudaFree(d_best_adj);
+    cudaFree(d_all_best_adj);
     if (d_seed_adj) cudaFree(d_seed_adj);
 
     return (h_found ? 0 : 1);
