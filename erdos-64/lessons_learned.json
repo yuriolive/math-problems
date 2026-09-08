@@ -40,5 +40,17 @@
     "failure_mode": "3-regularity violation caused by undefined odd-cycle 2-factor partitioning for small even m",
     "lesson": "Ensure 2-factor cycle decompositions are universally well-defined for all target orders n without relying on restricted integer partitions (m = m1 + m2 with m_i >= 5) that fail for small m. Always verify that 1-factor matchings preserve component boundaries to guarantee strict 3-regularity.",
     "cycle_len": 0
+  },
+  {
+    "family": "Modular / Cyclic Graph Lifts (Mesa-Bisch 2-Adic Barrier)",
+    "failure_mode": "Projection to odd part u of modulus g = 2^a * u discards 2-adic congruence L + r = 0 (mod 2^a)",
+    "lesson": "In cyclic or voltage lifts with modulus g = 2^a * u, avoiding cycles modulo the odd part u is insufficient because powers of two 2^k satisfy 2^k = 0 (mod 2^a). To provably avoid 2^k cycles, constructions should enforce L + r != 0 (mod 2^a) for all closed fiber walks.",
+    "cycle_len": 16
+  },
+  {
+    "family": "General Counterexample Structure (Bisch Theorem 3 & Lemma 2)",
+    "failure_mode": "High-degree vertex adjacency and low cubic density",
+    "lesson": "By Bisch's formally verified Lean 4 theorem, every minimal counterexample satisfies |V3| >= (2/3)|V| and all vertices of degree >= 4 form an independent set (never adjacent). Any search over non-cubic graphs must enforce that degree >= 4 vertices are only adjacent to cubic vertices.",
+    "cycle_len": 0
   }
 ]
