@@ -70,5 +70,11 @@
     "failure_mode": "Affine chord generator fixed points and ill-defined cross-block exchanges creating multi-edge collisions and breaking 3-regularity",
     "lesson": "All factor matchings must be strictly pairwise deranged permutations ($(\\pi_i^{-1} \\circ \\pi_j)(x) \\neq x$ for all $i \\neq j$ and all $x$) to prevent multi-edge collapses; avoid affine maps with $s \\not\\equiv 1$ whose modular fixed points violate 3-regularity.",
     "cycle_len": 0
+  },
+  {
+    "family": "Exploration",
+    "failure_mode": "Cycle Collision",
+    "lesson": "Girth 0 reached, but cycle collision occurred on path []...",
+    "cycle_len": 0
   }
 ]

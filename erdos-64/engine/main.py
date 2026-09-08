@@ -105,6 +105,12 @@ def init_db(db_path: Path) -> sqlite3.Connection:
             );
             """
         )
+        # Self-healing migration for existing databases
+        cur = conn.cursor()
+        existing = [c[1] for c in cur.execute('PRAGMA table_info(evaluations)').fetchall()]
+        for col, ctype in [('girth', 'INTEGER'), ('diameter', 'INTEGER'), ('bipartite', 'INTEGER'), ('diagnostic', 'TEXT')]:
+            if col not in existing:
+                cur.execute(f'ALTER TABLE evaluations ADD COLUMN {col} {ctype}')
     return conn
 
 def log_program(conn: sqlite3.Connection, run_id: str, prog: GraphProgram):

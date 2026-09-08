@@ -319,6 +319,9 @@ __global__ void swarm_search_kernel(
             return;
         }
 
+        bool is_3opt = (curand_uniform(&rng) < 0.25f);
+        int move_type = 2;
+
         int u = curand(&rng) % n;
         uint64_t u_nbrs = adj[u];
         int v_idx = curand(&rng) % 3;
@@ -342,16 +345,55 @@ __global__ void swarm_search_kernel(
 
         if (y == u || y == v || x == y) continue;
 
-        int mode = curand(&rng) % 2;
-        int n1_a = u, n1_b = (mode == 0) ? x : y;
-        int n2_a = v, n2_b = (mode == 0) ? y : x;
+        int n1_a = 0, n1_b = 0, n2_a = 0, n2_b = 0;
+        int w = 0, z = 0, n3_a = 0, n3_b = 0;
 
-        if ((adj[n1_a] & (1ULL << n1_b)) || (adj[n2_a] & (1ULL << n2_b))) continue;
+        if (is_3opt) {
+            w = curand(&rng) % n;
+            if (w == u || w == v || w == x || w == y) continue;
+            uint64_t w_nbrs = adj[w];
+            int z_idx = curand(&rng) % 3;
+            temp = w_nbrs;
+            for (int k = 0; k <= z_idx; ++k) {
+                z = __ffsll(temp) - 1;
+                temp &= temp - 1;
+            }
+            if (z == u || z == v || z == x || z == y || z == w) continue;
 
-        adj[u] &= ~(1ULL << v); adj[v] &= ~(1ULL << u);
-        adj[x] &= ~(1ULL << y); adj[y] &= ~(1ULL << x);
-        adj[n1_a] |= (1ULL << n1_b); adj[n1_b] |= (1ULL << n1_a);
-        adj[n2_a] |= (1ULL << n2_b); adj[n2_b] |= (1ULL << n2_a);
+            int mode = curand(&rng) % 2;
+            if (mode == 0) {
+                n1_a = u; n1_b = x;
+                n2_a = y; n2_b = w;
+                n3_a = z; n3_b = v;
+            } else {
+                n1_a = u; n1_b = y;
+                n2_a = x; n2_b = z;
+                n3_a = w; n3_b = v;
+            }
+
+            if ((adj[n1_a] & (1ULL << n1_b)) || (adj[n2_a] & (1ULL << n2_b)) || (adj[n3_a] & (1ULL << n3_b))) continue;
+
+            adj[u] &= ~(1ULL << v); adj[v] &= ~(1ULL << u);
+            adj[x] &= ~(1ULL << y); adj[y] &= ~(1ULL << x);
+            adj[w] &= ~(1ULL << z); adj[z] &= ~(1ULL << w);
+
+            adj[n1_a] |= (1ULL << n1_b); adj[n1_b] |= (1ULL << n1_a);
+            adj[n2_a] |= (1ULL << n2_b); adj[n2_b] |= (1ULL << n2_a);
+            adj[n3_a] |= (1ULL << n3_b); adj[n3_b] |= (1ULL << n3_a);
+            move_type = 3;
+        } else {
+            int mode = curand(&rng) % 2;
+            n1_a = u; n1_b = (mode == 0) ? x : y;
+            n2_a = v; n2_b = (mode == 0) ? y : x;
+
+            if ((adj[n1_a] & (1ULL << n1_b)) || (adj[n2_a] & (1ULL << n2_b))) continue;
+
+            adj[u] &= ~(1ULL << v); adj[v] &= ~(1ULL << u);
+            adj[x] &= ~(1ULL << y); adj[y] &= ~(1ULL << x);
+            adj[n1_a] |= (1ULL << n1_b); adj[n1_b] |= (1ULL << n1_a);
+            adj[n2_a] |= (1ULL << n2_b); adj[n2_b] |= (1ULL << n2_a);
+            move_type = 2;
+        }
 
         int new_c4, new_c8, new_c16, new_c32;
         int new_energy = compute_energy(adj, n, new_c4, new_c8, new_c16, new_c32);
@@ -392,10 +434,19 @@ __global__ void swarm_search_kernel(
                 return;
             }
         } else {
-            adj[n1_a] &= ~(1ULL << n1_b); adj[n1_b] &= ~(1ULL << n1_a);
-            adj[n2_a] &= ~(1ULL << n2_b); adj[n2_b] &= ~(1ULL << n2_a);
-            adj[u] |= (1ULL << v); adj[v] |= (1ULL << u);
-            adj[x] |= (1ULL << y); adj[y] |= (1ULL << x);
+            if (move_type == 3) {
+                adj[n1_a] &= ~(1ULL << n1_b); adj[n1_b] &= ~(1ULL << n1_a);
+                adj[n2_a] &= ~(1ULL << n2_b); adj[n2_b] &= ~(1ULL << n2_a);
+                adj[n3_a] &= ~(1ULL << n3_b); adj[n3_b] &= ~(1ULL << n3_a);
+                adj[u] |= (1ULL << v); adj[v] |= (1ULL << u);
+                adj[x] |= (1ULL << y); adj[y] |= (1ULL << x);
+                adj[w] |= (1ULL << z); adj[z] |= (1ULL << w);
+            } else {
+                adj[n1_a] &= ~(1ULL << n1_b); adj[n1_b] &= ~(1ULL << n1_a);
+                adj[n2_a] &= ~(1ULL << n2_b); adj[n2_b] &= ~(1ULL << n2_a);
+                adj[u] |= (1ULL << v); adj[v] |= (1ULL << u);
+                adj[x] |= (1ULL << y); adj[y] |= (1ULL << x);
+            }
             steps_since_improvement++;
         }
 

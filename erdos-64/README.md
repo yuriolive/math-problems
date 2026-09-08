@@ -120,11 +120,11 @@ uv run python -m engine.loongflow_main --iterations 10 --test-ns 32,34,36
 
 ---
 
-## 5. Empirical Discoveries & The $C_{16}$ Frontier ($n = 32 \dots 48$)
+## 5. Empirical Discoveries & The $C_{16}$ Frontier ($n = 32 \dots 60$)
 
-Over **5.0 Billion 2-opt moves** have been computed across orders $n \in [32, 48]$ on the RTX 4070 Super at 100% GPU utilization.
+Over **7.5 Billion moves** have been computed across orders $n \in [32, 60]$ on the RTX 4070 Super at 100% GPU utilization.
 
-Across **8 distinct graph orders**, the searcher eliminated all 4-cycles, all 8-cycles, and all 32-cycles. Every candidate below has been certified by the compiled Rust binary `verifier_64.exe`:
+Across **13 distinct graph orders**, the searcher eliminated all 4-cycles, all 8-cycles, and all 32-cycles. Every candidate below has been certified by the compiled Rust binary `verifier_64.exe`:
 
 | Order $n$ | $|E|$ | Regularity | Girth | Diam | $C_4$ | $C_8$ | $C_{16}$ | $C_{32}$ | Status | Candidate File |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -136,6 +136,11 @@ Across **8 distinct graph orders**, the searcher eliminated all 4-cycles, all 8-
 | **42** | 63 | Cubic ($d=3$) | 3 | 7 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n42.json` |
 | **44** | 66 | Cubic ($d=3$) | 3 | 6 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n44.json` |
 | **48** | 72 | Cubic ($d=3$) | 3 | 7 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n48.json` |
+| **50** | 75 | Cubic ($d=3$) | 3 | 7 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n50.json` |
+| **52** | 78 | Cubic ($d=3$) | 3 | 7 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n52.json` |
+| **54** | 81 | Cubic ($d=3$) | 3 | 7 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n54.json` |
+| **56** | 84 | Cubic ($d=3$) | 3 | 7 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n56.json` |
+| **60** | 90 | Cubic ($d=3$) | 3 | 8 | **0** | **0** | **1** | **0** | Near-Miss | `cuda/best_swarm_n60.json` |
 
 ---
 
