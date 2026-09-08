@@ -149,13 +149,14 @@ cmd /c 'call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\
 ```
 problem-name/
 ├── Makefile                      # Targets: build-verifier, build-cuda, test, search-gpu, search-pes, report
+├── campaign_solver.py            # Multi-order autonomous campaign orchestrator
 ├── lessons_learned.json          # Persistent knowledge base
 ├── results.db                    # SQLite run & evaluation log
 ├── verifier/                     # Rust 64-bit bitmask verifier
 │   ├── Cargo.toml
 │   └── src/{lib.rs, main.rs}
 ├── cuda/                         # RTX GPU Swarm Searcher
-│   ├── swarm.cu                  # CUDA kernel with seeded finisher mode
+│   ├── swarm.cu                  # CUDA kernel with ILS, spectral tempering, and finisher mode
 │   └── swarm.exe
 ├── sat/                          # SMT / SAT pipeline (Z3 / Kissat)
 │   └── run_sat.py
@@ -171,3 +172,27 @@ problem-name/
     ├── lakefile.toml
     └── Problem/Certificate.lean
 ```
+
+---
+
+## 5. Advanced Swarm Search Patterns
+
+### I. Iterated Local Search (ILS) & Reheating Pulses
+Pure simulated annealing freezes at $T \to 0$ into greedy hill climbing, trapping the swarm in local basins.
+- Track `local_best_energy` and `local_best_adj` in each GPU thread.
+- If a thread fails to improve for $K$ steps (e.g. 2,000 steps), revert to `local_best_adj` and apply a thermal reheat pulse ($T \leftarrow T_{\text{initial}} \times 0.7$).
+- This implements **Basin Hopping** directly in GPU registers.
+
+### II. Spectral Temperature Diversity
+Never use uniform temperature across GPU threads. Distribute initial temperatures geometrically or linearly across threads:
+```cpp
+float temp_mult = 0.05f + 2.5f * ((float)(tid % 128) / 127.0f);
+float thread_initial_temp = initial_temp * temp_mult;
+```
+This enables simultaneous greedy micro-polishing ($T = 0.4$) and wide basin jumping ($T = 20.0$) in a single kernel call.
+
+### III. Overcoming Topological Energy Canyons
+When local search (e.g. 2-opt) consistently eliminates lower-order penalties ($C_4 = 0, C_8 = 0$) but stalls at a higher-order cycle ($C_{16} = 1$), 2-edge swaps cannot cross the energy barrier without violating lower penalties.
+1. **Targeted Witness $k$-Opt**: Extract the exact vertex collision path from the Rust verifier and execute coordinated $k$-edge swaps exclusively on those witness edges.
+2. **Algebraic Lift Constraints**: Pass the collision witness back into the LoongFlow Planner to synthesize non-abelian voltage assignments (e.g. over $A_5$ or Frobenius groups) whose element orders forbid cycle formation algebraically.
+
