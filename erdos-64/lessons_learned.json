@@ -34,5 +34,11 @@
     "failure_mode": "2-chord cycle closure via complementary ring arc traversal and modular resonance where gcd(a \u00c2\u00b1 1, \u00e2\u201e\u201c) > 1",
     "lesson": "Cycle avoidance proofs on ring factors must evaluate full circular traversals including complementary long arcs (\u00e2\u201e\u201c - d), while enforcing gcd(a \u00c2\u00b1 1, \u00e2\u201e\u201c) = 1 on affine multipliers to eliminate fixed-difference harmonic closures.",
     "cycle_len": 8
+  },
+  {
+    "family": "Asymmetric Affine-Permuted Dual-Ring Graph (AAP-DRG)",
+    "failure_mode": "3-regularity violation caused by undefined odd-cycle 2-factor partitioning for small even m",
+    "lesson": "Ensure 2-factor cycle decompositions are universally well-defined for all target orders n without relying on restricted integer partitions (m = m1 + m2 with m_i >= 5) that fail for small m. Always verify that 1-factor matchings preserve component boundaries to guarantee strict 3-regularity.",
+    "cycle_len": 0
   }
 ]
