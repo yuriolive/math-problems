@@ -1,0 +1,6 @@
+name = "Problem1"
+version = "0.1.0"
+defaultTargets = ["Problem1"]
+
+[[lean_lib]]
+name = "Problem1"

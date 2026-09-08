@@ -1,0 +1,41 @@
+# Rust build artifacts
+**/target/
+Cargo.lock
+
+# C++ and CUDA compilation artifacts
+*.exe
+*.obj
+*.o
+*.lib
+*.exp
+*.ilk
+*.pdb
+*.out
+cuda/*.exe
+*.tmp
+
+# Python artifacts
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# SQLite databases & logs
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.log
+
+# Lean 4 / Lake build artifacts
+**/.lake/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
