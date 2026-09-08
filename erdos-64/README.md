@@ -64,7 +64,7 @@ erdos-64/
 - Runs 10,240 to 50,000 parallel search threads directly on your **RTX 4070 Super** (Ada Lovelace `sm_89`).
 - Each thread maintains a 3-regular graph on $n \ge 32$ vertices and performs **double-edge swaps (2-opt)** that preserve 3-regularity.
 - Minimizes the objective energy:
-  $$E(G) = 1000 \cdot \#C_4 + 200 \cdot \#C_8 + 50 \cdot \#C_{16} + 10 \cdot \#C_{32}$$
+  $$E(G) = 1000 \cdot |C_4| + 200 \cdot |C_8| + 50 \cdot |C_{16}| + 10 \cdot |C_{32}|$$
 - **Measured Throughput**: **27.6 million moves per second** in VRAM.
 
 ### II. SAT Solving Pipeline (`sat/run_sat.py`)
