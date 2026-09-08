@@ -10,19 +10,19 @@ build-cuda:
 
 test:
 	cargo test
-	python -m unittest discover -s tests
+	uv run python -m unittest discover -s tests
 
 search-gpu:
 	./cuda/swarm_64.exe 32 2000
 
 search-sat:
-	python sat/run_sat.py 12
+	uv run python sat/run_sat.py 12
 
 search-fun:
-	python engine/main.py --test-ns 24,32 --islands 5 --iterations 10
+	uv run python engine/main.py --test-ns 24,32 --islands 5 --iterations 10
 
 report:
-	python engine/report.py
+	uv run python engine/report.py
 
 clean:
 	cargo clean

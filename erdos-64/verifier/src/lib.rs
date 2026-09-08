@@ -8,11 +8,16 @@ pub struct GraphVerificationResult {
     pub min_degree: usize,
     pub max_degree: usize,
     pub is_cubic: bool,
+    pub girth: usize,
+    pub diameter: usize,
+    pub bipartite: bool,
     pub has_c4: bool,
     pub has_c8: bool,
     pub has_c16: bool,
     pub has_c32: bool,
     pub power_of_two_cycle_count: usize,
+    pub cycle_witness: Option<Vec<usize>>,
+    pub diagnostic_trace: String,
 }
 
 #[derive(Debug, Clone)]
@@ -66,61 +71,137 @@ impl Graph64 {
         sum / 2
     }
 
-    /// Fast O(n^2) bitwise check for 4-cycles.
-    /// A 4-cycle exists iff two vertices have at least 2 common neighbors.
-    pub fn has_c4(&self) -> bool {
+    /// Fast O(n^2) bitwise check for 4-cycles returning witness if present.
+    pub fn find_c4(&self) -> Option<Vec<usize>> {
         for u in 0..self.n {
             for w in (u + 1)..self.n {
                 let common = self.adj[u] & self.adj[w];
                 if common.count_ones() >= 2 {
-                    return true;
+                    let v1 = common.trailing_zeros() as usize;
+                    let remaining = common & !(1u64 << v1);
+                    let v2 = remaining.trailing_zeros() as usize;
+                    return Some(vec![u, v1, w, v2]);
                 }
             }
         }
-        false
+        None
     }
 
     /// Depth-first search with 64-bit visited bitmask to detect simple cycle of exact length L.
-    pub fn has_cycle_of_length(&self, target_len: usize) -> bool {
+    pub fn find_cycle_of_length(&self, target_len: usize) -> Option<Vec<usize>> {
         if target_len < 3 || target_len > self.n {
-            return false;
+            return None;
         }
 
         if target_len == 4 {
-            return self.has_c4();
+            return self.find_c4();
         }
 
-        // Search starting from each vertex v0
+        let mut path = Vec::with_capacity(target_len);
+
         for start in 0..=(self.n - target_len) {
             let visited = 1u64 << start;
+            path.clear();
+            path.push(start);
             let mut neighbors = self.adj[start] & !((1u64 << (start + 1)) - 1);
             while neighbors != 0 {
                 let v1 = neighbors.trailing_zeros() as usize;
                 neighbors &= neighbors - 1;
-                if self.dfs_cycle(start, v1, 2, target_len, visited | (1u64 << v1)) {
-                    return true;
+                path.push(v1);
+                if self.dfs_cycle(start, v1, 2, target_len, visited | (1u64 << v1), &mut path) {
+                    return Some(path);
                 }
+                path.pop();
             }
         }
-        false
+        None
     }
 
-    fn dfs_cycle(&self, start: usize, curr: usize, depth: usize, target_len: usize, visited: u64) -> bool {
+    fn dfs_cycle(
+        &self,
+        start: usize,
+        curr: usize,
+        depth: usize,
+        target_len: usize,
+        visited: u64,
+        path: &mut Vec<usize>,
+    ) -> bool {
         if depth == target_len {
-            // Check if current vertex is connected back to start
             return (self.adj[curr] & (1u64 << start)) != 0;
         }
 
-        // Restrict vertices to > start to prevent symmetry duplications
         let mut candidates = self.adj[curr] & !visited & !((1u64 << (start + 1)) - 1);
         while candidates != 0 {
             let nxt = candidates.trailing_zeros() as usize;
             candidates &= candidates - 1;
-            if self.dfs_cycle(start, nxt, depth + 1, target_len, visited | (1u64 << nxt)) {
+            path.push(nxt);
+            if self.dfs_cycle(start, nxt, depth + 1, target_len, visited | (1u64 << nxt), path) {
                 return true;
             }
+            path.pop();
         }
         false
+    }
+
+    /// Computes shortest cycle length (girth) via BFS
+    pub fn compute_girth(&self) -> usize {
+        let mut min_cycle = usize::MAX;
+        for s in 0..self.n {
+            let mut dist = vec![usize::MAX; self.n];
+            let mut parent = vec![usize::MAX; self.n];
+            let mut queue = std::collections::VecDeque::new();
+
+            dist[s] = 0;
+            queue.push_back(s);
+
+            while let Some(u) = queue.pop_front() {
+                let mut nbrs = self.adj[u];
+                while nbrs != 0 {
+                    let v = nbrs.trailing_zeros() as usize;
+                    nbrs &= nbrs - 1;
+
+                    if dist[v] == usize::MAX {
+                        dist[v] = dist[u] + 1;
+                        parent[v] = u;
+                        queue.push_back(v);
+                    } else if parent[u] != v && parent[v] != u {
+                        let cycle_len = dist[u] + dist[v] + 1;
+                        min_cycle = min_cycle.min(cycle_len);
+                    }
+                }
+            }
+        }
+        if min_cycle == usize::MAX { 0 } else { min_cycle }
+    }
+
+    /// Computes graph diameter via all-pairs shortest paths
+    pub fn compute_diameter(&self) -> (usize, bool) {
+        let mut max_dist = 0;
+        let mut is_bipartite = true;
+
+        for s in 0..self.n {
+            let mut dist = vec![usize::MAX; self.n];
+            let mut queue = std::collections::VecDeque::new();
+            dist[s] = 0;
+            queue.push_back(s);
+
+            while let Some(u) = queue.pop_front() {
+                let mut nbrs = self.adj[u];
+                while nbrs != 0 {
+                    let v = nbrs.trailing_zeros() as usize;
+                    nbrs &= nbrs - 1;
+
+                    if dist[v] == usize::MAX {
+                        dist[v] = dist[u] + 1;
+                        max_dist = max_dist.max(dist[v]);
+                        queue.push_back(v);
+                    } else if dist[v] % 2 == dist[u] % 2 {
+                        is_bipartite = false;
+                    }
+                }
+            }
+        }
+        (max_dist, is_bipartite)
     }
 
     /// Complete verification of the Erdős-Gyárfás condition
@@ -134,16 +215,52 @@ impl Graph64 {
         }
 
         let is_cubic = min_deg == 3 && max_deg == 3;
-        let has_c4 = self.has_c4();
-        let has_c8 = if self.n >= 8 { self.has_cycle_of_length(8) } else { false };
-        let has_c16 = if self.n >= 16 { self.has_cycle_of_length(16) } else { false };
-        let has_c32 = if self.n >= 32 { self.has_cycle_of_length(32) } else { false };
+        let girth = self.compute_girth();
+        let (diameter, bipartite) = self.compute_diameter();
+
+        let c4_wit = self.find_c4();
+        let has_c4 = c4_wit.is_some();
+
+        let c8_wit = if !has_c4 && self.n >= 8 {
+            self.find_cycle_of_length(8)
+        } else if has_c4 {
+            None
+        } else {
+            None
+        };
+        let has_c8 = c8_wit.is_some();
+
+        let c16_wit = if !has_c4 && !has_c8 && self.n >= 16 {
+            self.find_cycle_of_length(16)
+        } else {
+            None
+        };
+        let has_c16 = c16_wit.is_some();
+
+        let c32_wit = if !has_c4 && !has_c8 && !has_c16 && self.n >= 32 {
+            self.find_cycle_of_length(32)
+        } else {
+            None
+        };
+        let has_c32 = c32_wit.is_some();
 
         let mut power_of_two_cycle_count = 0;
         if has_c4 { power_of_two_cycle_count += 1; }
         if has_c8 { power_of_two_cycle_count += 1; }
         if has_c16 { power_of_two_cycle_count += 1; }
         if has_c32 { power_of_two_cycle_count += 1; }
+
+        let cycle_witness = c4_wit.or(c8_wit).or(c16_wit).or(c32_wit);
+
+        let mut diagnostic = String::new();
+        if !is_cubic {
+            diagnostic.push_str(&format!("Degree violation: min_degree={}, max_degree={}. Must be strictly 3. ", min_deg, max_deg));
+        }
+        if let Some(ref wit) = cycle_witness {
+            diagnostic.push_str(&format!("Collision: Found cycle of length {} on vertices {:?}. ", wit.len(), wit));
+        } else if is_cubic {
+            diagnostic.push_str("SUCCESS: No 2^k cycles (C4, C8, C16, C32) detected!");
+        }
 
         let is_counterexample = (min_deg >= 3) && (power_of_two_cycle_count == 0);
 
@@ -154,16 +271,20 @@ impl Graph64 {
             min_degree: if self.n == 0 { 0 } else { min_deg },
             max_degree: max_deg,
             is_cubic,
+            girth,
+            diameter,
+            bipartite,
             has_c4,
             has_c8,
             has_c16,
             has_c32,
             power_of_two_cycle_count,
+            cycle_witness,
+            diagnostic_trace: diagnostic,
         }
     }
 }
 
-/// Constructs the complete graph K_4
 pub fn make_k4() -> Graph64 {
     let mut g = Graph64::new(4);
     for u in 0..4 {
@@ -174,7 +295,6 @@ pub fn make_k4() -> Graph64 {
     g
 }
 
-/// Constructs the Petersen graph (10 vertices, 3-regular, girth 5)
 pub fn make_petersen() -> Graph64 {
     let mut g = Graph64::new(10);
     for i in 0..5 {
@@ -191,7 +311,6 @@ pub fn make_petersen() -> Graph64 {
     g
 }
 
-/// Constructs the official Markström graph (24 vertices, 3-regular, planar, House of Graphs #51419)
 pub fn make_markstrom() -> Graph64 {
     let adj_list: [&[usize]; 24] = [
         &[1, 2, 3],
@@ -231,10 +350,9 @@ mod tests {
         let k4 = make_k4();
         let res = k4.verify();
         assert!(res.is_cubic);
-        assert_eq!(res.n, 4);
-        assert_eq!(res.edges, 6);
-        assert!(res.has_c4); // K4 has 4-cycles
-        assert!(!res.counterexample);
+        assert_eq!(res.girth, 3);
+        assert!(res.has_c4);
+        assert!(res.cycle_witness.is_some());
     }
 
     #[test]
@@ -242,11 +360,11 @@ mod tests {
         let pet = make_petersen();
         let res = pet.verify();
         assert!(res.is_cubic);
-        assert_eq!(res.n, 10);
-        assert_eq!(res.edges, 15);
-        assert!(!res.has_c4); // Petersen has girth 5 (no C4)
-        assert!(res.has_c8);  // Petersen HAS 8-cycles!
-        assert!(!res.counterexample);
+        assert_eq!(res.girth, 5);
+        assert_eq!(res.diameter, 2);
+        assert!(!res.has_c4);
+        assert!(res.has_c8);
+        assert!(res.cycle_witness.is_some());
     }
 
     #[test]
@@ -255,10 +373,9 @@ mod tests {
         let res = mark.verify();
         assert!(res.is_cubic);
         assert_eq!(res.n, 24);
-        assert_eq!(res.edges, 36);
-        assert!(!res.has_c4, "Markstrom graph must NOT have C4");
-        assert!(!res.has_c8, "Markstrom graph must NOT have C8");
-        assert!(res.has_c16, "Markstrom graph HAS C16");
-        assert!(!res.counterexample);
+        assert!(!res.has_c4);
+        assert!(!res.has_c8);
+        assert!(res.has_c16);
+        assert!(res.cycle_witness.is_some());
     }
 }

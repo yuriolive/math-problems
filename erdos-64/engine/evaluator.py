@@ -27,11 +27,16 @@ class GraphEvaluationDetail:
     min_degree: int
     max_degree: int
     edges: int
+    girth: int
+    diameter: int
+    bipartite: bool
     has_c4: bool
     has_c8: bool
     has_c16: bool
     has_c32: bool
     power_of_two_cycle_count: int
+    cycle_witness: list[int] | None = None
+    diagnostic_trace: str = ""
     error: str | None = None
 
 @dataclass
@@ -40,6 +45,7 @@ class GraphEvaluationResult:
     is_counterexample: bool
     all_cubic: bool
     details: list[GraphEvaluationDetail]
+    best_diagnostic: str = ""
 
 def find_verifier_binary(project_root: Path | None = None) -> Path:
     if project_root is None:
@@ -117,11 +123,15 @@ def verify_with_rust_binary(verifier_path: Path, graph_dict: dict) -> GraphEvalu
             min_degree=0,
             max_degree=0,
             edges=0,
+            girth=0,
+            diameter=0,
+            bipartite=False,
             has_c4=True,
             has_c8=True,
             has_c16=True,
             has_c32=True,
             power_of_two_cycle_count=4,
+            diagnostic_trace="Process failed: " + err,
             error=err,
         )
 
@@ -134,11 +144,16 @@ def verify_with_rust_binary(verifier_path: Path, graph_dict: dict) -> GraphEvalu
             min_degree=data.get("min_degree", 0),
             max_degree=data.get("max_degree", 0),
             edges=data.get("edges", 0),
+            girth=data.get("girth", 0),
+            diameter=data.get("diameter", 0),
+            bipartite=data.get("bipartite", False),
             has_c4=data.get("has_c4", False),
             has_c8=data.get("has_c8", False),
             has_c16=data.get("has_c16", False),
             has_c32=data.get("has_c32", False),
             power_of_two_cycle_count=data.get("power_of_two_cycle_count", 0),
+            cycle_witness=data.get("cycle_witness"),
+            diagnostic_trace=data.get("diagnostic_trace", ""),
             error=None,
         )
     except Exception as e:
@@ -149,11 +164,15 @@ def verify_with_rust_binary(verifier_path: Path, graph_dict: dict) -> GraphEvalu
             min_degree=0,
             max_degree=0,
             edges=0,
+            girth=0,
+            diameter=0,
+            bipartite=False,
             has_c4=True,
             has_c8=True,
             has_c16=True,
             has_c32=True,
             power_of_two_cycle_count=4,
+            diagnostic_trace=f"JSON decode error: {e}",
             error=f"JSON decode error: {e}",
         )
 
@@ -173,6 +192,7 @@ def evaluate_graph_candidate(
     total_fitness = 0.0
     any_counterexample = False
     all_cubic = True
+    best_diag = ""
 
     for n in test_ns:
         try:
@@ -187,11 +207,15 @@ def evaluate_graph_candidate(
                     min_degree=0,
                     max_degree=0,
                     edges=0,
+                    girth=0,
+                    diameter=0,
+                    bipartite=False,
                     has_c4=True,
                     has_c8=True,
                     has_c16=True,
                     has_c32=True,
                     power_of_two_cycle_count=4,
+                    diagnostic_trace=str(e),
                     error=str(e),
                 )
             )
@@ -200,6 +224,9 @@ def evaluate_graph_candidate(
 
         detail = verify_with_rust_binary(verifier_path, g_dict)
         details.append(detail)
+
+        if detail.diagnostic_trace and not best_diag:
+            best_diag = detail.diagnostic_trace
 
         if detail.is_cubic:
             total_fitness += 500.0
@@ -225,4 +252,5 @@ def evaluate_graph_candidate(
         is_counterexample=any_counterexample,
         all_cubic=all_cubic,
         details=details,
+        best_diagnostic=best_diag,
     )

@@ -1,5 +1,6 @@
 """
 Mutator module for Erdős Problem #64 using Antigravity CLI (`agy -p`).
+Implements AlphaEvolve / OpenEvolve Artifact Side-Channel (Trace-Reflective Feedback).
 Zero external API keys required.
 """
 
@@ -50,12 +51,31 @@ def build_graph_mutation_prompt(
     parent_fitness: float,
     island_id: int,
     generation: int,
+    diagnostic_trace: str = "",
 ) -> str:
+    """
+    AlphaEvolve-style prompt passing the parent code along with the exact
+    runtime diagnostic trace / cycle witness from the Rust verifier.
+    """
+    trace_section = ""
+    if diagnostic_trace:
+        trace_section = f"""
+=== RUNTIME EXECUTION DIAGNOSTICS (Artifact Side-Channel) ===
+The Rust verifier analyzed the previous candidate graph and found the following:
+{diagnostic_trace}
+
+INSTRUCTION BASED ON TRACE:
+Act as an automated debugger: inspect the exact vertices/edges involved in the collision above.
+Refactor your generator logic so that those specific cycles cannot form, while maintaining exact 3-regularity!
+============================================================
+"""
+
     prompt = f"""You are an extremal graph theory mathematician attacking Erdős Problem #64 (The Erdős–Gyárfás Conjecture).
 
 The objective is to find a counterexample: a 3-regular (cubic) graph with NO simple cycles of length 2^k (no C4, no C8, no C16, no C32).
 Current parent fitness: {parent_fitness:.1f}.
 Island: {island_id}, Generation: {generation}.
+{trace_section}
 
 Here is the current generator function:
 ```python

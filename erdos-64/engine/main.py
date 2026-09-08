@@ -1,7 +1,10 @@
 """
-FunSearch Orchestrator for Erdős Problem #64 (The Erdős–Gyárfás Conjecture):
-Samples candidate graph generators from islands, mutates them using local `agy -p`,
-evaluates graphs with `verifier_64`, logs to SQLite, and exports Lean 4 certificates.
+AlphaEvolve / OpenEvolve Orchestrator for Erdős Problem #64:
+- Quality-Diversity MAP-Elites Archive along (girth, diameter, bipartite).
+- Artifact Side-Channel (passes exact failing cycle witnesses to LLM mutator).
+- Multi-island migration topology.
+- Non-interactive `agy -p` mutations with zero API keys.
+- Lean 4 certificate generation on counterexample discovery.
 """
 
 import argparse
@@ -24,10 +27,12 @@ if __package__ is None or __package__ == "":
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from engine.evaluator import evaluate_graph_candidate, find_verifier_binary, GraphEvaluationResult
     from engine.island import GraphIslandManager, GraphProgram
+    from engine.map_elites import MapElitesArchive
     from engine.mutator import build_graph_mutation_prompt, mutate_with_agy
 else:
     from .evaluator import evaluate_graph_candidate, find_verifier_binary, GraphEvaluationResult
     from .island import GraphIslandManager, GraphProgram
+    from .map_elites import MapElitesArchive
     from .mutator import build_graph_mutation_prompt, mutate_with_agy
 
 logging.basicConfig(
@@ -35,7 +40,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("erdos64_search")
+logger = logging.getLogger("alphaevolve_64")
 
 def init_db(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
@@ -76,11 +81,14 @@ def init_db(db_path: Path) -> sqlite3.Connection:
                 n INTEGER,
                 counterexample INTEGER,
                 is_cubic INTEGER,
+                girth INTEGER,
+                diameter INTEGER,
+                bipartite INTEGER,
                 has_c4 INTEGER,
                 has_c8 INTEGER,
                 has_c16 INTEGER,
                 has_c32 INTEGER,
-                power_of_two_cycle_count INTEGER,
+                diagnostic TEXT,
                 error TEXT
             );
             """
@@ -125,19 +133,22 @@ def log_program(conn: sqlite3.Connection, run_id: str, prog: GraphProgram):
             conn.execute(
                 """
                 INSERT INTO evaluations
-                (program_id, n, counterexample, is_cubic, has_c4, has_c8, has_c16, has_c32, power_of_two_cycle_count, error)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (program_id, n, counterexample, is_cubic, girth, diameter, bipartite, has_c4, has_c8, has_c16, has_c32, diagnostic, error)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     prog.id,
                     d.get("n", 0),
                     1 if d.get("counterexample") else 0,
                     1 if d.get("is_cubic") else 0,
+                    d.get("girth", 0),
+                    d.get("diameter", 0),
+                    1 if d.get("bipartite") else 0,
                     1 if d.get("has_c4") else 0,
                     1 if d.get("has_c8") else 0,
                     1 if d.get("has_c16") else 0,
                     1 if d.get("has_c32") else 0,
-                    d.get("power_of_two_cycle_count", 0),
+                    d.get("diagnostic_trace", ""),
                     d.get("error"),
                 ),
             )
@@ -169,7 +180,7 @@ end Problem64.Certificate
     return out_file
 
 def main():
-    parser = argparse.ArgumentParser(description="FunSearch Erdős Problem #64 Engine")
+    parser = argparse.ArgumentParser(description="AlphaEvolve / OpenEvolve Erdős #64 Engine")
     parser.add_argument("--test-ns", type=str, default="24,32", help="Comma-separated vertex counts n to test")
     parser.add_argument("--islands", type=int, default=5, help="Number of evolutionary islands")
     parser.add_argument("--iterations", type=int, default=10, help="Number of generations")
@@ -178,7 +189,7 @@ def main():
 
     test_ns = [int(x.strip()) for x in args.test_ns.split(",") if x.strip()]
 
-    logger.info("=== Erdős Problem #64 (Erdős–Gyárfás) Evolutionary Engine ===")
+    logger.info("=== AlphaEvolve / OpenEvolve Pipeline for Erdős Problem #64 ===")
     logger.info(f"Test dimensions n: {test_ns}")
     logger.info(f"Islands: {args.islands} | Iterations: {args.iterations}")
 
@@ -197,6 +208,8 @@ def main():
             (run_id, start_time, str(test_ns), args.islands, "running"),
         )
 
+    # Initialize MAP-Elites Archive and Island Manager
+    map_elites = MapElitesArchive()
     manager = GraphIslandManager(num_islands=args.islands, max_population_per_island=10)
 
     def eval_wrapper(code: str) -> GraphEvaluationResult:
@@ -208,10 +221,16 @@ def main():
     for island in manager.islands:
         for p in island.population:
             log_program(conn, run_id, p)
+            # Register in MAP-Elites
+            for d in p.details:
+                map_elites.add(p, girth=d.get("girth", 0), diameter=d.get("diameter", 0), bipartite=d.get("bipartite", False))
 
     initial_best = manager.global_best
     if initial_best:
         logger.info(f"Initial Best Fitness: {initial_best.fitness:.1f} (Cubic: {initial_best.all_cubic})")
+        logger.info(f"Initial MAP-Elites Coverage: {map_elites.coverage()} niches.")
+
+    last_diagnostic = ""
 
     for gen in range(1, args.iterations + 1):
         island_idx = (gen - 1) % args.islands
@@ -220,11 +239,13 @@ def main():
         parent = island.sample_parent()
         logger.info(f"[Gen {gen}/{args.iterations}] Island {island_idx}: mutating parent {parent.id}...")
 
+        # AlphaEvolve trace-reflective mutation prompt
         prompt = build_graph_mutation_prompt(
             parent_code=parent.code,
             parent_fitness=parent.fitness,
             island_id=island_idx,
             generation=gen,
+            diagnostic_trace=last_diagnostic,
         )
 
         try:
@@ -234,6 +255,8 @@ def main():
             continue
 
         eval_res = eval_wrapper(mutant_code)
+        last_diagnostic = eval_res.best_diagnostic
+
         mutant_prog = GraphProgram(
             id=f"mutant_g{gen}_isl{island_idx}_{uuid.uuid4().hex[:6]}",
             code=mutant_code,
@@ -248,11 +271,15 @@ def main():
                     "n": d.n,
                     "counterexample": d.counterexample,
                     "is_cubic": d.is_cubic,
+                    "girth": d.girth,
+                    "diameter": d.diameter,
+                    "bipartite": d.bipartite,
                     "has_c4": d.has_c4,
                     "has_c8": d.has_c8,
                     "has_c16": d.has_c16,
                     "has_c32": d.has_c32,
                     "power_of_two_cycle_count": d.power_of_two_cycle_count,
+                    "diagnostic_trace": d.diagnostic_trace,
                     "error": d.error,
                 }
                 for d in eval_res.details
@@ -262,9 +289,15 @@ def main():
         log_program(conn, run_id, mutant_prog)
         accepted = island.add(mutant_prog)
 
+        # Register in MAP-Elites
+        niche_improved = False
+        for d in eval_res.details:
+            if map_elites.add(mutant_prog, girth=d.girth, diameter=d.diameter, bipartite=d.bipartite):
+                niche_improved = True
+
         logger.info(
             f"  -> Mutant fitness: {mutant_prog.fitness:.1f} | Cubic: {mutant_prog.all_cubic} | "
-            f"Counterexample: {mutant_prog.is_counterexample} | Accepted: {accepted}"
+            f"Niche improved: {niche_improved} | Diagnostic: {eval_res.best_diagnostic[:60]}"
         )
 
         is_new_global = manager.update_global_best(mutant_prog)
@@ -287,7 +320,7 @@ def main():
 
         if gen % 5 == 0:
             count = manager.migrate()
-            logger.info(f"[Migration] Ring migration integrated {count} programs.")
+            logger.info(f"[Migration] Ring migration integrated {count} programs. MAP-Elites niches: {map_elites.coverage()}")
 
     with conn:
         conn.execute("UPDATE runs SET status = ? WHERE run_id = ?", ("completed", run_id))
@@ -297,6 +330,7 @@ def main():
     if best:
         logger.info(f"Best Discovered Fitness: {best.fitness:.1f}")
         logger.info(f"Cubic: {best.all_cubic} | Counterexample: {best.is_counterexample}")
+    logger.info(map_elites.summary())
 
     conn.close()
 
