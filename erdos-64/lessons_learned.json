@@ -1,0 +1,38 @@
+[
+  {
+    "family": "Petersen Variants / GP(n/2, k)",
+    "failure_mode": "Star-to-ring chord resonance",
+    "lesson": "Generalized Petersen graphs GP(n/2, k) always close an 8-cycle when 2*k = n/2 or k = 2. Steps must avoid divisors of cycle lengths.",
+    "cycle_len": 8
+  },
+  {
+    "family": "Chordal Rings C_n + chords (i, i+k)",
+    "failure_mode": "Constant chord step symmetry",
+    "lesson": "Uniform constant chord offsets k create 4-cycles whenever 2*k = 4 or n-4, and 8-cycles whenever 2*k = 8. Chords must be non-uniform or affine-permuted.",
+    "cycle_len": 4
+  },
+  {
+    "family": "Cayley Graphs over Abelian Groups",
+    "failure_mode": "Commutativity of generator paths",
+    "lesson": "Any abelian group Cayley graph with generators a, b has a*b*a^(-1)*b^(-1) = 1, inevitably creating 4-cycles. Only non-abelian groups (e.g., A_4, S_4, dihedral with careful odd reflections) can have girth >= 5.",
+    "cycle_len": 4
+  },
+  {
+    "family": "Bipartite Cubic Graphs",
+    "failure_mode": "Even cycle abundance",
+    "lesson": "Every cycle in a bipartite graph has even length. Since bipartite cubic graphs have only even cycles, eliminating C4 and C8 is extraordinarily constrained; non-bipartite graphs provide vastly greater room to avoid 2^k cycles.",
+    "cycle_len": 8
+  },
+  {
+    "family": "Exploration",
+    "failure_mode": "Cycle Collision",
+    "lesson": "Girth 0 reached, but cycle collision occurred on path []...",
+    "cycle_len": 0
+  },
+  {
+    "family": "Multi-Ring Odd-Factor Lift (MROFL)",
+    "failure_mode": "2-chord cycle closure via complementary ring arc traversal and modular resonance where gcd(a \u00c2\u00b1 1, \u00e2\u201e\u201c) > 1",
+    "lesson": "Cycle avoidance proofs on ring factors must evaluate full circular traversals including complementary long arcs (\u00e2\u201e\u201c - d), while enforcing gcd(a \u00c2\u00b1 1, \u00e2\u201e\u201c) = 1 on affine multipliers to eliminate fixed-difference harmonic closures.",
+    "cycle_len": 8
+  }
+]

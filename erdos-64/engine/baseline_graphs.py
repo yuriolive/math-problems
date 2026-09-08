@@ -76,3 +76,10 @@ def generate_graph(n: int) -> dict:
 
     return {"n": n, "adj": adj}
 '''
+
+def get_seed_generators() -> dict[str, str]:
+    return {
+        "generalized_petersen": GENERALIZED_PETERSEN_CODE,
+        "ring_chord": RING_CHORD_CODE,
+    }
+

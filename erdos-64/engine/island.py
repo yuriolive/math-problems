@@ -28,6 +28,11 @@ class GraphProgram:
     generation: int
     parent_id: str | None = None
     details: list[dict[str, Any]] = field(default_factory=list)
+    girth: int = 0
+    diameter: int = 0
+    bipartite: bool = False
+    diagnostic_trace: str = ""
+    cycle_witness: list[int] | None = None
 
 class GraphIsland:
     def __init__(self, island_id: int, max_population: int = 10):

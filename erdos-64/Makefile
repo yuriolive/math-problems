@@ -13,7 +13,10 @@ test:
 	uv run python -m unittest discover -s tests
 
 search-gpu:
-	./cuda/swarm_64.exe 32 2000
+	./cuda/swarm_64.exe 32 10000
+
+search-pes:
+	uv run python -m engine.loongflow_main --iterations 10 --test-ns 32,34,36
 
 search-sat:
 	uv run python sat/run_sat.py 12

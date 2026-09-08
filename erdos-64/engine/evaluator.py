@@ -254,3 +254,52 @@ def evaluate_graph_candidate(
         details=details,
         best_diagnostic=best_diag,
     )
+
+def evaluate_graph_code(
+    code: str,
+    program_id: str = "prog",
+    test_ns: list[int] | None = None,
+    parent_id: str | None = None,
+    island_id: int = 0,
+    generation: int = 0,
+    timeout_sec: float = 5.0,
+):
+    try:
+        from .island import GraphProgram
+    except ImportError:
+        from island import GraphProgram
+
+    eval_res = evaluate_graph_candidate(code, test_ns=test_ns, timeout_sec=timeout_sec)
+    girth = 0
+    diameter = 0
+    bipartite = False
+    cycle_witness = None
+    diag = eval_res.best_diagnostic
+
+    for d in eval_res.details:
+        if d.girth > girth:
+            girth = d.girth
+        if d.diameter > diameter:
+            diameter = d.diameter
+        if d.bipartite:
+            bipartite = True
+        if d.cycle_witness and not cycle_witness:
+            cycle_witness = d.cycle_witness
+
+    return GraphProgram(
+        id=program_id,
+        code=code,
+        fitness=eval_res.fitness,
+        is_counterexample=eval_res.is_counterexample,
+        all_cubic=eval_res.all_cubic,
+        island_id=island_id,
+        generation=generation,
+        parent_id=parent_id,
+        details=[d.__dict__ for d in eval_res.details],
+        girth=girth,
+        diameter=diameter,
+        bipartite=bipartite,
+        diagnostic_trace=diag,
+        cycle_witness=cycle_witness,
+    )
+
