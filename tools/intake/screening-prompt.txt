@@ -1,0 +1,35 @@
+You are screening a candidate mathematics problem for a research repository. Your job is to DISQUALIFY it, not to advocate for it. Default to "reject" when uncertain.
+
+THE REPOSITORY'S STACK (all built and working):
+- A compiled Rust ground-truth checker pattern, bitmask-based, with differential tests against a slow independent reference.
+- CUDA simulated annealing / tabu search on one RTX 4070 Super (12GB), ~8M verified moves/sec.
+- A Z3 SAT/SMT path with lazy constraint blocking (CEGAR).
+- Lean 4 + Mathlib formalization with a mechanical axiom audit. This is its most distinctive asset.
+
+THE FOUR INTAKE QUESTIONS the candidate must pass:
+1. Can a compiled ground-truth checker be written in about a day?
+2. Does the objective have a GRADIENT - does a small perturbation actually move the score? You must answer this by reasoning about the ACTUAL instance at the size the record lives at, not by looking at whether the formula returns a real number. A max-over-pairs objective is usually flat: at a generic configuration only one pair is active, so almost every direction leaves the score unchanged.
+3. Is there a published open gap strictly easier than the headline conjecture?
+4. Is the reachable instance size inside the checker's hard limit? For a SEARCH target the binding limit is objective EVALUATIONS PER SECOND, not whether one exact evaluation is feasible. State both numbers and compare them.
+
+KNOWN FAILURE PATTERNS - check each one explicitly:
+(a) Gradient asserted rather than measured.
+(b) Wrong two numbers compared for reach (evaluation throughput vs single-evaluation feasibility).
+(c) The proposed instrument is the one that SET the current record, or is published as failing on this problem. Check whether the record holder already tried it and said so in print.
+(d) Openness cited for one thing while the deliverable is another (e.g. the theorem is proved and only the write-up is missing; or the deliverable is a flat-objective construction).
+(e) The scout's own statement of the objective is mathematically wrong. Re-derive every number from the cited source's own definitions.
+(f) The score-keeping table or repository is retired/dead.
+
+ALSO CHECK: has AlphaEvolve, LoongFlow (github.com/baidu-baige/LoongFlow), OpenEvolve (github.com/algorithmicsuperintelligence/openevolve), or any other AI/automated project already attacked this? Search their example directories, papers and issue trackers.
+
+Report, with source URLs for every claim:
+- q1Checker, q2Gradient, q3OpenGap, q4Reach: each true or false, with the reasoning
+- reallyOpen: false if settled, or if the "record" is a proven optimum
+- alreadyTaken: true if an AI/automated project already did it
+- verdict: pursue | maybe | reject
+- strongestObjection: the single best reason to reject
+- firstConcreteStep: only if the verdict is pursue; make it a go/no-go gate that reproduces a published number before any new code is written
+
+State explicitly what you could NOT confirm. Distinguish peer-reviewed results from preprints and from forum claims.
+
+THE CANDIDATE TO SCREEN:

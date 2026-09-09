@@ -8,12 +8,14 @@ Lean — screened against the four questions in [`tools/intake`](../tools/intake
 whose instructions were to *disqualify* it: verify the problem is genuinely open, that the
 record is not a proven optimum, that no AI or automated project has already taken it, and
 that the objective really has a gradient rather than only appearing to. Fourteen were
-screened before the pass was stopped; six were not reached and are unfiltered.
+screened before the pass was stopped. Five more were screened afterwards through the
+Antigravity CLI (`agy --print`, `gemini-3.1-pro-high`, sandboxed), leaving four still
+unscreened for the reason recorded at the bottom.
 
-**Result: one candidate survived.** That ratio is the useful part of this document. Most
-plausible-looking targets fail on a specific, checkable ground, and the failures cluster
-into four repeatable patterns — recorded at the bottom, because they are what the intake
-filter should be extended to catch.
+**Result: two candidates survived out of nineteen screened.** That ratio is the useful part
+of this document. Most plausible-looking targets fail on a specific, checkable ground, and
+the failures cluster into six repeatable patterns — recorded at the bottom, because they are
+what the intake filter should be extended to catch.
 
 ---
 
@@ -91,34 +93,104 @@ blow-up attains $c_4$ is open. Race risk is real: AlphaEvolve has just done nine
 Ramsey *number* lower bounds ([arXiv:2603.09172](https://arxiv.org/abs/2603.09172)), and
 multiplicity is one step away for a team with far more compute.
 
+### Erdős #857 — sunflower-free capacity $\mu_3$
+
+A family is 3-sunflower-free if no three distinct sets $A, B, C$ satisfy
+$A \cap B = A \cap C = B \cap C = A \cap B \cap C$. The capacity
+$\mu_3 = \lim \max|\mathcal{F}|^{1/n}$ over 3-sunflower-free families on $[n]$ is open;
+Erdős conjectured $\mu_3 < 2$.
+
+| | |
+| :--- | :--- |
+| **Best known** | $1.551 < \mu_3 < 1.8899$ |
+| **Lower bound** | Deuber, Erdős, Gunderson, Kostochka, Meyer, [doi:10.1006/jcta.1997.2778](https://doi.org/10.1006/jcta.1997.2778) — peer-reviewed |
+| **Better lower bound** | $1.554$, Naslund, unpublished, cited in Naslund–Sawin, [doi:10.1017/fms.2017.12](https://doi.org/10.1017/fms.2017.12) |
+| **Upper bound** | Naslund–Sawin, same paper |
+| **Problem page** | [erdosproblems.com/857](https://www.erdosproblems.com/857), tracked as optimization constant C49 |
+
+**Why it passes.** The checker is three bitwise ANDs and two comparisons per triple —
+`u64` masks for $n \le 64$, $O(m^3)$ for a full audit and $O(m^2)$ incrementally, the same
+shape as the Erdős #64 verifier. The gradient is the good part: fix a target size $m$ and
+minimise the number of sunflower triples, and a single set swap moves the score by $O(m^2)$.
+That is a dense min-conflicts landscape, not a max-over-pairs plateau — the failure mode
+that killed most of the rejected candidates. To beat $1.554$ needs $m > 1.554^n$; over the
+working window $n = 12 \ldots 24$ that is $m \approx 177$ to $40{,}600$, inside both the
+64-vertex mask limit and the $O(m^3)$ audit limit of $m \approx 5\times10^4$.
+
+**Not taken.** FunSearch attacked the closely related cap set problem; sunflower-free
+capacity is distinct and untouched by FunSearch, AlphaEvolve, OpenEvolve or LoongFlow.
+
+**The trap, and it is a sharp one.** The tensor-power argument requires the seed family to
+be strictly **uniform**. Let the search evaluate non-uniform families and it will
+immediately find a false record — $f(7) = 28$ gives $28^{1/7} \approx 1.609 > 1.554$ — which
+yields no asymptotic bound at all, because non-uniform families lose sunflower-freeness
+under the direct sum. **The checker must enforce uniformity rigidly**, or the first
+"record" it reports will be worthless. This is precisely the class of error this repository
+has already published once.
+
+**First step, as a go/no-go gate.** Before any Rust or CUDA: extract the explicit base
+construction from Deuber et al. (1997) with a throwaway script and verify it really yields
+$1.551$. If it does not reproduce, the objective is not understood.
+
+**Unconfirmed.** The screener could not verify the `SproutSeeds/sunflower-lean` repository
+named in a forum claim, the unpublished Naslund manuscript itself (only its citation), or
+arXiv preprint 2609.06175.
+
 ---
 
-## Not screened
+## Still unscreened — remaining work
 
-The pass was stopped before these were checked. They are **unfiltered** — scouted only, and
-the screening step is exactly what killed thirteen of their siblings. Do not act on any of
-them without running the filter first.
+Four candidates were never screened. All four halted on the same cause: the Antigravity
+CLI needs a `read_url` (and for one, `command`) permission that **headless mode cannot
+prompt for, so it is auto-denied**:
 
-| Candidate | Instrument |
-| :--- | :--- |
-| Putatively optimal coverings of $S^2$ by $n$ equal caps — Hardin–Sloane–Smith table, $n = 4\ldots130$, no published improvement in 32 years | cuda-search |
-| Lower bound for the three-colour Ramsey number $R(4,4,4)$ | sat |
-| Weak Schur numbers $WS(6)$, $WS(7)$, Schur number $S(6)$ — lower bounds | sat |
-| Erdős #840 — largest quasi-Sidon subset of $\{1,\ldots,N\}$ | cuda-search |
-| Erdős #857 — Erdős–Szemerédi 3-sunflower-free capacity | cuda-search |
-| Erdős #864 — largest Sidon set in $\{1,\ldots,N\}$ with one exceptional sum | cuda-search |
-| Erdős #834 — Ruiliang Li's resolution of the Erdős–Lovász 3-critical 3-graph problem, unrefereed preprint with a machine-checkable certificate half | lean-proof |
-| Erdős #1091 — the $K_4$-free 4-critical construction its own paper's Lean pipeline skipped | lean-proof |
-| Erdős #960 — the $n^2/12$ ordinary-lines lower bound, the other unformalized sibling from that paper | lean-proof |
+```
+jetski: no output produced - a tool required the "read_url" permission that headless
+mode cannot prompt for, so it was auto-denied.
+```
 
-The three Lean candidates are the most interesting of these, because they need no search at
-all and play to the layer no competing project has.
+These are **unfiltered** — scouted only. Screening killed 15 of the 19 candidates it
+reached, so do not act on any of these without running it.
+
+| Remaining candidate | Instrument | Blocked on |
+| :--- | :--- | :--- |
+| Weak Schur numbers $WS(6)$, $WS(7)$, Schur number $S(6)$ — lower bounds | sat | `read_url` |
+| Erdős #864 — largest Sidon set in $\{1,\ldots,N\}$ with one exceptional sum | cuda-search | `read_url` |
+| Erdős #1091 — the $K_4$-free 4-critical construction its own paper's Lean pipeline skipped | lean-proof | `read_url` |
+| Erdős #960 — the $n^2/12$ ordinary-lines lower bound, the other unformalized sibling | lean-proof | `command` |
+
+The two Lean candidates are the most interesting of the four: they need no search at all
+and play to the layer no competing project has.
+
+### How to finish them
+
+The screening prompt is saved at
+[`tools/intake/screening-prompt.txt`](../tools/intake/screening-prompt.txt) — it encodes the
+four intake questions plus the failure patterns below. Append the candidate's section from
+[`candidates-raw-notes.md`](./candidates-raw-notes.md) and pipe the whole thing in:
+
+```bash
+cat tools/intake/screening-prompt.txt candidate.txt > p.txt
+agy --print="$(cat p.txt)" --model gemini-3.1-pro-high --sandbox --disable-slash-commands
+```
+
+To unblock the four above, add a narrow allow-rule to the Antigravity CLI settings —
+**`read_url` only**, not a blanket approval:
+
+```jsonc
+// permissions.allow in the agy settings.json
+"read_url(*)"
+```
+
+`--dangerously-skip-permissions` would also unblock it and should not be used here: it
+auto-approves every tool including file writes and shell commands, for an agent doing
+open-ended web research. The narrow rule is read-only.
 
 ---
 
 ## Rejected, and the pattern
 
-Thirteen candidates were disqualified. The reasons collapse into four patterns, each worth
+Seventeen candidates were disqualified. The reasons collapse into four patterns, each worth
 adding to the intake filter.
 
 **1. The gradient was asserted, not measured.** *Grassmannian frames / Game of Sloanes* —
@@ -135,6 +207,10 @@ evaluation is feasible. This is the Erdős #64 failure in a new costume, which i
 what question 4 exists to catch, and it still slipped through at the scouting stage.
 
 **3. The proposed instrument is the one that set the record, or is published as failing.**
+*Three-colour Ramsey $R(4,4,4)$* — simulated annealing over structured cyclic colourings is
+exactly what Exoo and Wesley have applied to this for decades without moving
+$R_3(4) \ge 129$; a GPU constant-factor speedup does not overcome a $3^{64}$ search space.
+
 *Football-pool / covering codes* — the tabulated bounds ($K_3(6,1) \le 73$,
 $K_3(7,1) \le 186$, $K_3(8,1) \le 486$) were produced by the very method proposed. *Shannon
 capacity of $C_7$* — the record holders state in the record-taking paper
@@ -151,7 +227,18 @@ a compliance audit of other people's repositories; the "graded objective" is a p
 not a gradient. **Also: the La Jolla Covering Repository has been retired — check the
 score-keeper is alive before targeting its table.**
 
-A fifth pattern, which the surviving candidate also exhibits: **the scout's own statement of
-the objective was mathematically wrong** (supremum for infimum, wrong denominator). Every
-number in a candidate needs re-derivation from the source's own definitions before any code
-is written.
+**5. The scout's own statement of the objective was mathematically wrong.** Both surviving
+candidates exhibit this, so it is the rule and not the exception. *Ramsey multiplicity* —
+supremum read as infimum, wrong denominator. *Erdős #840* (quasi-Sidon) — the penalty was
+written as $\max(0, \rho - 1 - \varepsilon)$ instead of
+$\max(0, 1 - \varepsilon - \rho)$, so it is identically zero and the search collapses to a
+trivial $|A|$ maximiser that never enforces the property at all. *Erdős #857* — the
+uniformity requirement was missing, which would have produced a false record on the first
+run. **Every number in a candidate needs re-derivation from the source's own definitions
+before any code is written.**
+
+**6. A verification target with a flat objective and no theorem to redirect to.**
+*Erdős #834* — a flat-objective verification of an already-resolved problem. For Erdős #64
+the flat objective redirected usefully to the proof side because a real theorem was waiting
+there. That redirection is not automatic, and without it "formalize the claim" is not a
+contribution to an open question.
