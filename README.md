@@ -1,70 +1,131 @@
-# Math Problems: Neuro-Symbolic Discovery Pipelines
+# math-problems
 
-Two search pipelines aimed at open Erdős problems, built from compiled Rust verifiers, NVIDIA
-CUDA kernels (RTX 4070 Super), LLM-driven code mutation through the local `agy` CLI, Z3
-SAT/SMT solving, and Lean 4 formalizations.
+A working stack for attacking open problems in mathematics: search for counterexamples,
+check every candidate with compiled code, and formalize whatever turns out to be provable.
 
-Both problems are open. Neither pipeline has produced a counterexample or a new bound, and
-neither Lean project proves the target theorem.
+The organising principle is that **nothing is believed because a search said so**. Every
+number that leaves this repository comes from a checker independent of the thing being
+checked, and anything claimed as proved is machine-checked in Lean 4.
 
----
+## Layout
 
-## Projects
+```
+problems/<collection>/<id>/   one directory per problem, e.g. problems/erdos/64/
+tools/                        code reused across problems
+.agents/skills/               the methodology, as a reusable agent skill
+```
 
-### 1. [`erdos-search/`](./erdos-search/) — Erdős Problem #1 (Distinct Subset Sums)
-* **Goal**: find $n$-element sets of positive integers with distinct subset sums that minimize
-  the ratio $R = \max(A) / 2^n$.
-* **Benchmark**: Bohman's bound, $R < 0.22002$ (hard-coded as `BOHMAN_CONSTANT` in
-  `engine/evaluator.py`).
-* **What is actually wired up**:
-  * A bit-parallel Rust verifier over dynamic `u64` word sets, driven from Python through
-    `engine/evaluator.py`.
-  * A 5-island evolutionary loop (`engine/main.py`) with ring migration, seeded from
-    Conway–Guy and Bohman baselines, mutating candidates via `agy -p` with no external API
-    keys. Runs are logged to SQLite.
-  * `cuda/verifier_cuda.cu` is a standalone CUDA source file. It is compiled only by the
-    `build-cuda` Makefile target and is **not called by the Python pipeline** — nothing in
-    `engine/` references it.
-  * `formalization/` is a Lean 4 Lake scaffold. `Problem1/Verification.lean` still ends in a
-    `sorry`, so it certifies nothing yet.
-* See [`erdos-search/README.md`](./erdos-search/README.md) for details.
+Inside a problem directory the convention is:
 
-### 2. [`erdos-64/`](./erdos-64/) — Erdős Problem #64 (Erdős–Gyárfás Conjecture)
-* **Goal**: search for a counterexample — a graph with minimum degree $\ge 3$ containing no
-  cycle whose length is a power of two. Bounty: **\$1000**
-  ([erdosproblems.com/64](https://www.erdosproblems.com/64)).
-* **Context that shapes the search**: Liu and Montgomery proved the conjecture true once the
-  minimum degree exceeds an absolute constant, so only very small minimum degree can host a
-  counterexample. The binding size constraint comes from the $f(k)$ scale — $f(k)$ is the
-  order of the smallest cubic graph with no cycle of length $2^m$ for any $m \le k$, with
-  $f(3) = 24$ exact and $54 \le f(4) \le 78$. Since any counterexample on $n \ge 16$ vertices
-  is $\{C_4, C_8, C_{16}\}$-free, **a cubic counterexample needs at least 54 vertices**, and
-  the orders below that are provably empty rather than merely unsearched.
-* **The open target this tooling fits**: closing $f(4) \in [54, 78]$ — a cubic graph on 54–77
-  vertices with no $C_4$, $C_8$ or $C_{16}$ would improve Exoo's upper bound. That target
-  allows 32-cycles, so it is strictly easier than refuting the conjecture and must not be
-  reported as a counterexample. Run it with `tools/f4_sweep.py`.
-* **Pipeline**:
-  * Rust cycle verifier over 64-bit adjacency bitmasks. It tests every power-of-two length
-    $\le n$ unconditionally and, with `--full --cap N`, reports exact per-length counts.
-    Validated against $K_4$, the Petersen graph, and Markström's 24-vertex graph.
-  * CUDA swarm annealer, 10,240 threads by default, using a lexicographic tier energy and
-    degree-preserving 2-opt/3-opt swaps. Measured at about **8.2 million evaluated
-    moves/sec** on an RTX 4070 Super — counting only moves whose energy was actually
-    computed.
-  * Z3 SAT/SMT encoding with symmetry-breaking clauses.
-  * A Plan-Execute-Summary LLM loop plus an island-model evolutionary engine.
-  * A Lean 4 project that builds with no `sorry`, checking well-formedness, 3-regularity and
-    short cycle lengths; the long cycle lengths are checked by the Rust verifier, which is a
-    trusted rather than a verified component.
-* See [`erdos-64/README.md`](./erdos-64/README.md) for the measured candidate table.
+```
+problems/<collection>/<id>/
+├── README.md               the statement, the literature, and the measured state
+├── ROADMAP.md              what is worth trying, what is closed, and why
+├── verifier/               compiled ground-truth checker (Rust)
+├── cuda/                   GPU search, if the problem admits one
+├── sat/                    SAT/SMT encoding, if it admits one
+├── engine/                 search orchestration
+├── formalization*/         Lean 4 projects
+├── paper/                  main.tex, built by tools/paper
+├── tools/                  problem-specific scripts
+└── tests/                  including differential tests against the verifier
+```
 
----
+`tools/` at the root is the shared layer; `problems/<...>/tools/` is problem-specific. When
+a script proves useful twice, it moves up.
 
-## Technology Stack
+## The shared layer
 
-* **Verification**: Rust 2021 (64-bit bitmasks), Lean 4 with Lake.
-* **GPU**: NVIDIA CUDA, Ada Lovelace `sm_89` (RTX 4070 Super) by default.
-* **Search and synthesis**: Python 3.12+, island-model evolution, Antigravity CLI (`agy -p`),
-  no external API keys.
-* **Constraint solving**: Z3 (`z3-solver`), the only third-party Python dependency.
+* **[`tools/paper`](./tools/paper/)** — LaTeX → PDF pipeline. Picks whatever TeX engine is
+  installed, settles references and bibliography, verifies the output is a real PDF and
+  reports its page count, and prints the first genuine TeX error on failure. Adding a paper
+  to a new problem needs no new build code:
+  `uv run python tools/paper/build.py problems/<collection>/<id>/paper`, or `--all`. Shared
+  macros live in `tools/paper/shared/preamble.tex`, including `\checkedin{...}` for
+  attaching a Lean identifier to a printed statement.
+* **[`.agents/skills/neuro-symbolic-math`](./.agents/skills/neuro-symbolic-math/)** — the
+  methodology: how to scaffold a problem, how to build a checker that cannot quietly lie,
+  how to design a search objective that actually has a gradient, and the working rules
+  below.
+
+Per-problem verifiers, GPU searchers and Lean setups are not yet factored into libraries;
+they follow the documented pattern instead, on the view that the second instance is what
+reveals the right abstraction.
+
+## Working rules
+
+Not stylistic. Each of these exists because violating it produced a false result here.
+
+1. **Ground truth is a separate program.** Published numbers come from the compiled
+   verifier, never from the search kernel, whose counters are capped and exist only to
+   drive the search.
+2. **"Absent" must never mean "not evaluated".** A checker carries three states —
+   satisfied, violated, unknown — end to end. A short-circuited check that serializes as
+   `false` will eventually be read as "absent" and published.
+3. **Mark lower bounds as lower bounds.** A count that hit its cap prints as `N+`.
+4. **Report only what was measured.** Throughput means operations whose result was actually
+   computed, not loop iterations.
+5. **Say which components are trusted and which are verified.** A pipeline whose Lean layer
+   checks structure while a compiled binary checks the hard part has one verified layer and
+   one trusted layer. Write that sentence down.
+6. **Read the literature before spending compute.** Find the field's scale function and read
+   the known bounds off it. A search below a settled frontier cannot succeed however long
+   it runs — and that mistake has already cost this repository a campaign.
+7. **Prefer the open published gap to the headline problem.** There is usually a real,
+   citable target far more tractable than the conjecture itself. Keep it one flag away from
+   the main objective, and never conflate a hit on the easier target with the harder one.
+8. **No `sorry`.** An unproved obligation is a named hypothesis, visible in the statement,
+   or a comment naming the tool that discharged it. Every theorem is audited with
+   `#print axioms`.
+9. **Replace a falsified claim, do not annotate it.** Corrections live in the commit
+   history; the docs carry the current state.
+10. **Every number traceable** to a command that was run or a source that can be cited.
+
+## Problems
+
+### [`problems/erdos/64`](./problems/erdos/64/) — Erdős–Gyárfás conjecture
+
+Does every finite graph with minimum degree at least 3 contain a cycle whose length is a
+power of two? Open.
+
+* **Search side.** No counterexample, and the published bounds are unchanged. The reachable
+  region turned out to be *provably* empty: the literature's $f(4) \ge 54$ means no cubic
+  counterexample exists below 54 vertices, so every order this repository had been sweeping
+  was excluded in advance. The live computational target is instead closing
+  $f(4) \in [54, 78]$, a strictly easier and genuinely open question.
+* **Formalization side.** A machine-checked strict density bound for a hypothetical minimal
+  counterexample, $|V_3| > \tfrac{2}{3}|V|$ — an argument due to a forum contributor,
+  previously unverified — plus a reformulation identifying exactly what controls that
+  constant, and a conditional improvement to $12/17$. No `sorry`; every theorem audits to
+  the three standard axioms.
+* Write-up: [`problems/erdos/64/paper/main.pdf`](./problems/erdos/64/paper/main.pdf).
+  Measured candidate table and details:
+  [`problems/erdos/64/README.md`](./problems/erdos/64/README.md). What is worth trying
+  next, and what is closed:
+  [`problems/erdos/64/ROADMAP.md`](./problems/erdos/64/ROADMAP.md).
+
+## Adding a problem
+
+1. `mkdir -p problems/<collection>/<id>` and write its `README.md` first: the statement,
+   the known bounds with citations, and what would count as progress. Rule 6 applies before
+   any code is written.
+2. Build the checker before the search. It defines what a solution *is*, and a search
+   without it produces numbers nobody should trust.
+3. Add differential tests — the fast checker against a slow, independent reference. In a
+   repository like this one that is the single highest-value test.
+4. Add `paper/main.tex` when there is something to write up; the build pipeline needs no
+   configuration.
+
+## Toolchain
+
+| Component | Used for |
+| :--- | :--- |
+| Rust (2021) | compiled verifiers |
+| Lean 4 + Lake, optionally Mathlib | formalization |
+| CUDA (`nvcc`), Ada `sm_89` by default | GPU search |
+| Python ≥ 3.12 via `uv` | orchestration and tooling |
+| Z3 (`z3-solver`) | SAT/SMT encodings; the only third-party Python dependency |
+| MiKTeX, TeX Live or Tectonic | paper builds |
+| `agy` CLI | optional LLM-driven code mutation, no API keys |
+
+Use `uv run python ...` rather than a bare `python`, so the pinned environment is used.

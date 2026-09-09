@@ -1,5 +1,5 @@
 .PHONY: all build-verifier build-cuda build-lean test test-rust test-python test-lean \
-        search-gpu search-pes search-sat search-islands recount verify report clean
+        search-gpu polish-gpu search-pes search-sat search-islands recount verify report paper paper-clean clean
 
 all: build-verifier build-cuda
 
@@ -61,3 +61,10 @@ report:
 clean:
 	cargo clean
 	cd formalization && lake clean
+
+# Build the paper to PDF via the shared pipeline in tools/paper.
+paper:
+	cd ../../.. && uv run python tools/paper/build.py problems/erdos/64/paper
+
+paper-clean:
+	cd ../../.. && uv run python tools/paper/build.py problems/erdos/64/paper --clean

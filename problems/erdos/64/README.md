@@ -106,7 +106,7 @@ selected root is not a proof of the target theorem.
 ## 2. Architecture & File Structure
 
 ```
-erdos-64/
+problems/erdos/64/
 ├── Cargo.toml                    # Rust workspace configuration
 ├── Makefile                      # build-verifier, build-cuda, test, search-*, report
 ├── README.md                     # This file
@@ -234,7 +234,7 @@ under concurrent revision; read them directly for the current flags and encoding
 ## 4. Quickstart Commands
 
 ```bash
-cd erdos-64
+cd problems/erdos/64
 
 # 1. Build the Rust verifier and the CUDA kernel
 make build-verifier                  # cargo build --release

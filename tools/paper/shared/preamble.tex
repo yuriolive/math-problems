@@ -1,0 +1,47 @@
+% Shared preamble for papers in this repository.
+% Papers pick this up via TEXINPUTS (set by tools/paper/build.py), so a paper needs only
+%
+%   \documentclass[11pt,a4paper]{article}
+%   \input{preamble}
+%
+% Keep this conservative: only packages present in a default MiKTeX/TeX Live install.
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+
+% Theorem environments, numbered within sections.
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{observation}[theorem]{Observation}
+
+% Graph-theory shorthands used across these papers.
+% NB: \deg is already a LaTeX primitive, so define a distinct name rather than
+% redefining it -- \newcommand on an existing command is a fatal error.
+\newcommand{\olddeg}{\operatorname{deg}}
+\newcommand{\Vthree}{V_{3}}
+\newcommand{\Vbig}{V_{\ge 4}}
+\newcommand{\cardV}[1]{\lvert #1 \rvert}
+\newcommand{\Ccyc}[1]{C_{#1}}
+
+% A visible marker for statements that are machine-checked, with the Lean name.
+\newcommand{\leanname}[1]{\textup{\texttt{#1}}}
+\newcommand{\checkedin}[1]{\hfill\textup{[Lean: \leanname{#1}]}}
+
+% Let bibliographies cite a DOI without pulling in another package.
+\providecommand{\doi}[1]{\textsc{doi:}\,\url{#1}}

@@ -39,3 +39,13 @@ ENV/
 Thumbs.db
 .vscode/
 .idea/
+
+# LaTeX build artifacts (the built PDF itself is tracked)
+*.aux
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.out
+*.toc
+*.synctex.gz

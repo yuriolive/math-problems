@@ -1,11 +1,11 @@
 [project]
 name = "math-problems"
 version = "0.1.0"
-description = "Neuro-Symbolic Search Pipelines for Erdős Problems #1 and #64"
+description = "Search and formalization pipelines for open Erdős problems"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    # z3-solver is the only third-party runtime dependency: erdos-64/sat/run_sat.py
+    # z3-solver is the only third-party runtime dependency: problems/erdos/64/sat/run_sat.py
     # imports it. openevolve, pyyaml and tqdm were declared here but imported nowhere.
     "z3-solver>=5.1.0",
 ]

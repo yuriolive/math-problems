@@ -18,7 +18,7 @@ That repository carries no license, so `EGC.lean` is **not** vendored into this 
 it yourself before building this module:
 
 ```bash
-cd erdos-64/formalization-egc
+cd problems/erdos/64/formalization-egc
 curl -sSfL https://raw.githubusercontent.com/AJBisch/AJBisch.github.io/main/EGC.lean \
   -o EGC.lean
 lake build EGCBridge

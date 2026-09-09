@@ -1,5 +1,5 @@
 @echo off
-REM Compiles the CUDA swarm searcher. Run from the erdos-64 directory or from here.
+REM Compiles the CUDA swarm searcher. Run from the problems/erdos/64 directory or from here.
 REM Locates the MSVC environment first, because nvcc needs cl.exe on PATH.
 
 setlocal

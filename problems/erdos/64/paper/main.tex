@@ -1,0 +1,337 @@
+\documentclass[11pt,a4paper]{article}
+\input{preamble}
+
+\title{The cubic density of a minimal counterexample to the\\
+Erd\H{o}s--Gy\'arf\'as conjecture:\\
+a reformulation, a machine-checked strict bound,\\
+and an obstruction}
+
+\author{Yuri Olive\thanks{Formalization and write-up. The strictness argument of
+Section~\ref{sec:strict} is due to the Erd\H{o}s Problems forum user \texttt{jul059};
+see Section~\ref{sec:attribution}.}}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The Erd\H{o}s--Gy\'arf\'as conjecture asserts that every finite graph of minimum degree at
+least $3$ contains a cycle whose length is a power of two. Carr proved that in a minimal
+counterexample at least $4/7$ of the vertices are cubic; Bisch improved this to $2/3$. We
+record three things. First, a reformulation: writing $S_3$ for the number of
+cubic-to-cubic incidences, every minimal counterexample satisfies
+$4\cardV{\Vbig} + S_3 \le 3\cardV{\Vthree}$, so the constant in any such density bound is
+decided entirely by how many edges the cubic set spans among itself; Bisch's $2/3$ is
+exactly the case in which $G[\Vthree]$ is a perfect matching. Second, a machine-checked
+proof, in Lean~4 against \texttt{Mathlib}, of the strict bound
+$\cardV{\Vthree} > \tfrac{2}{3}\cardV{V}$, an argument due to the forum user
+\texttt{jul059} and previously unverified. Third, a conditional improvement: if
+$G[\Vthree]$ has no $K_2$ component then $\cardV{\Vthree} \ge \tfrac{12}{17}\cardV{V}$,
+together with an explanation of why removing that hypothesis resists the standard
+minimality arguments, and an observation that no counting argument built on the known
+structural lemmas can beat $2/3$. All statements below are formalized; nothing here is
+asserted that the Lean development does not prove.
+\end{abstract}
+
+\section{Introduction}
+
+\begin{conjecture}[Erd\H{o}s--Gy\'arf\'as]
+Every finite graph with minimum degree at least $3$ contains a simple cycle whose length is
+a power of two.
+\end{conjecture}
+
+The conjecture is open. Liu and Montgomery~\cite{LiuMontgomery} proved it for graphs whose
+minimum degree exceeds an absolute constant, which also refuted the stronger conjecture of
+Erd\H{o}s and Gy\'arf\'as; consequently a counterexample can only have very small minimum
+degree. Markstr\"om~\cite{Markstrom} showed by computer search that a cubic counterexample
+needs at least $30$ vertices, and Garcia~\cite{Garcia} recently established, by a
+SAT search certified with DRAT proofs, that any counterexample has at least $24$ vertices.
+
+Throughout, $G$ is a \emph{minimal counterexample}: a counterexample of minimum order and,
+subject to that, of minimum size. Write
+\[
+  \Vthree = \{v : \olddeg v = 3\},
+  \qquad
+  \Vbig = \{v : \olddeg v \ge 4\}.
+\]
+Carr~\cite{Carr} proved that $\Vbig$ is an independent set, that every vertex has a
+neighbour of degree exactly $3$, and that $\cardV{\Vthree} \ge \tfrac{4}{7}\cardV{V}$.
+Bisch~\cite{Bisch} formalized those structural facts in Lean~4 and improved the density to
+$\cardV{\Vthree} \ge \tfrac{2}{3}\cardV{V}$.
+
+Our contribution is organised as follows. Section~\ref{sec:reform} gives the counting
+reformulation, which makes the source of the constant explicit. Section~\ref{sec:strict}
+reports the machine-checked strict bound. Section~\ref{sec:cond} proves the conditional
+$12/17$ bound, and Section~\ref{sec:obstruction} explains why we could not remove its
+hypothesis --- including the observation that counting alone cannot.
+
+\paragraph{Standing hypotheses.}
+All results are stated for a graph satisfying the properties of a minimal counterexample
+that we actually use: minimum degree at least $3$; $\Vbig$ independent; every vertex has a
+cubic neighbour; no $4$-cycle; minimality in the order; and the absence of a power-of-two
+cycle. In the formalization these are bundled as \leanname{MinCexHyps}, and
+\leanname{EGCBridge} derives that bundle from Bisch's \leanname{IsMinCex}, so every
+statement below also holds verbatim for a minimal counterexample in his sense.
+
+\section{The reformulation}\label{sec:reform}
+
+\begin{definition}
+For a vertex $v$ let $\operatorname{cd}(v)$ denote its number of cubic neighbours, and put
+\[
+  S_3 \;=\; \sum_{v \in \Vthree} \operatorname{cd}(v),
+\]
+the number of ordered cubic-to-cubic incidences; equivalently $S_3 = 2\,e(G[\Vthree])$.
+\end{definition}
+
+\begin{theorem}\label{thm:reform}
+$4\cardV{\Vbig} + S_3 \le 3\cardV{\Vthree}$. \checkedin{four\_card\_big\_add\_sum\_cubicDeg\_le}
+\end{theorem}
+
+\begin{proof}
+Since $\Vbig$ is independent, every neighbour of a vertex of $\Vbig$ is cubic, so
+$\olddeg u$ counts cubic neighbours for each $u \in \Vbig$ and
+$\sum_{u \in \Vbig} \olddeg u = e(\Vbig, \Vthree)$. Counting that quantity from the other
+side and using that a cubic vertex has exactly $3 - \operatorname{cd}(v)$ neighbours in
+$\Vbig$,
+\[
+  4\cardV{\Vbig}
+  \;\le\; \sum_{u \in \Vbig} \olddeg u
+  \;=\; e(\Vbig, \Vthree)
+  \;=\; \sum_{v \in \Vthree}\bigl(3 - \operatorname{cd}(v)\bigr)
+  \;=\; 3\cardV{\Vthree} - S_3. \qedhere
+\]
+\end{proof}
+
+Theorem~\ref{thm:reform} isolates what controls the constant: a density bound follows from
+any lower bound on $S_3$, and from nothing else.
+
+\begin{corollary}[Bisch's bound]\label{cor:bisch}
+$4\cardV{\Vbig} \le 2\cardV{\Vthree}$, hence
+$\cardV{\Vthree} \ge \tfrac{2}{3}\cardV{V}$. \checkedin{card\_big\_le\_of\_domination}
+\end{corollary}
+
+\begin{proof}
+Every cubic vertex has a cubic neighbour, so $\operatorname{cd}(v) \ge 1$ on $\Vthree$ and
+$S_3 \ge \cardV{\Vthree}$. Substitute into Theorem~\ref{thm:reform}.
+\end{proof}
+
+\begin{observation}\label{obs:matching}
+Equality $S_3 = \cardV{\Vthree}$ holds precisely when $G[\Vthree]$ is a perfect matching.
+So $2/3$ is exactly the bound obtained in that case, and a $K_2$ component of
+$G[\Vthree]$ --- a pair of adjacent cubic vertices whose four remaining edges all leave to
+$\Vbig$ --- is the unique local configuration attaining the extremal ratio.
+\end{observation}
+
+\section{The strict bound, verified}\label{sec:strict}
+
+\begin{theorem}\label{thm:strict}
+$\cardV{\Vthree} \ge 2\cardV{\Vbig} + 1$, hence
+$3\cardV{\Vthree} > 2\cardV{V}$. \checkedin{strict\_two\_thirds}
+\end{theorem}
+
+The argument is not ours; it is due to \texttt{jul059} \cite{jul059}, who posted it on the
+Erd\H{o}s Problems forum marked as unverified. We state it for completeness and because the
+formalization is what we contribute.
+
+Suppose $\cardV{\Vthree} = 2\cardV{\Vbig}$. Then every inequality in the proof of
+Theorem~\ref{thm:reform} is tight, which forces every vertex of $\Vbig$ to have degree
+exactly $4$ and every cubic vertex to have exactly two neighbours in $\Vbig$
+(\leanname{degree\_eq\_four\_of\_equality}, \leanname{card\_big\_nbrs\_eq\_two\_of\_equality}).
+Contract each cubic vertex to an edge joining its two $\Vbig$ neighbours. The result $H$ is
+a graph on $\Vbig$; it is simple because two cubic vertices with the same pair of $\Vbig$
+neighbours would close a $4$-cycle, and it is $4$-regular because the four cubic
+neighbours of a vertex $u \in \Vbig$ lead to four \emph{distinct} vertices --- a collision
+would again close a $4$-cycle through $u$ (\leanname{contract\_degree\_ge}). Since
+$\cardV{V(H)} = \cardV{\Vbig} < \cardV{V}$ and $H$ has minimum degree $4$, minimality
+supplies a cycle in $H$ of length $2^k$. Re-inserting the cubic vertices turns it into a
+cycle of length $2^{k+1}$ in $G$, contradicting the hypothesis on $G$.
+
+\begin{remark}
+The lifting step is where the formalization does work the informal argument leaves
+implicit: one must check that the resulting closed walk is a \emph{cycle}. The $\Vbig$
+vertices are distinct because the cycle in $H$ is one; the inserted cubic vertices are
+distinct because, in the equality case, a cubic vertex has exactly two $\Vbig$ neighbours
+and therefore \emph{determines} the contraction edge it came from
+(\leanname{mid\_determines\_pair}), and a cycle traverses each edge once; and the two
+families are disjoint because a cubic vertex has degree $3$ while a $\Vbig$ vertex does
+not. See \leanname{exists\_pow2\_cycle\_of\_contract\_cycle}.
+\end{remark}
+
+\section{A conditional improvement}\label{sec:cond}
+
+By Observation~\ref{obs:matching}, improving on $2/3$ means bounding $S_3$ away from
+$\cardV{\Vthree}$, i.e.\ excluding $K_2$ components of $G[\Vthree]$.
+
+\begin{definition}
+$G$ has \emph{no $K_2$ component} if every cubic vertex with exactly one cubic neighbour
+has that neighbour possess at least two. \leanname{noK2Component}
+\end{definition}
+
+\begin{lemma}\label{lem:fibre}
+If $G$ has no $K_2$ component then $3 S_3 \ge 4\cardV{\Vthree}$.
+\checkedin{three\_mul\_sum\_cubicDeg\_ge}
+\end{lemma}
+
+\begin{proof}
+Split $\Vthree$ into $T = \{v : \operatorname{cd}(v) = 1\}$ and
+$S = \{v : \operatorname{cd}(v) \ge 2\}$; domination excludes $\operatorname{cd}(v) = 0$,
+so this is a partition and $S_3 = \cardV{T} + \sum_{s \in S}\operatorname{cd}(s)$. Write
+$D = \sum_{s\in S}\operatorname{cd}(s)$, so $D \ge 2\cardV{S}$. The hypothesis sends each
+$v \in T$ to a cubic neighbour lying in $S$; the fibre of $s \in S$ consists of cubic
+neighbours of $s$, so it has at most $\operatorname{cd}(s)$ elements and hence
+$\cardV{T} \le D$. Now
+\[
+  S_3 = \cardV{T} + D \ge \cardV{T} + \max\bigl(2\cardV{S},\, \cardV{T}\bigr),
+\]
+and comparing the two cases $\cardV{T} \ge 2\cardV{S}$ and $\cardV{T} < 2\cardV{S}$ gives
+$S_3 \ge \tfrac{4}{3}\bigl(\cardV{T} + \cardV{S}\bigr) = \tfrac{4}{3}\cardV{\Vthree}$
+in both.
+\end{proof}
+
+Note that the proof is a fibre count; no connectivity or spanning-tree argument is needed.
+
+\begin{theorem}\label{thm:1217}
+If $G$ has no $K_2$ component then $12\cardV{V} \le 17\cardV{\Vthree}$, i.e.
+\[
+  \cardV{\Vthree} \;\ge\; \tfrac{12}{17}\cardV{V} \;\approx\; 0.7059\,\cardV{V}.
+\]
+\checkedin{twelve\_seventeenths\_of\_noK2}
+\end{theorem}
+
+\begin{proof}
+Combine Theorem~\ref{thm:reform} with Lemma~\ref{lem:fibre}:
+$4\cardV{\Vbig} \le 3\cardV{\Vthree} - \tfrac{4}{3}\cardV{\Vthree} = \tfrac{5}{3}\cardV{\Vthree}$,
+so $12\cardV{\Vbig} \le 5\cardV{\Vthree}$. Adding $12\cardV{\Vthree}$ to both sides and
+using $\cardV{V} = \cardV{\Vthree} + \cardV{\Vbig}$ gives the claim.
+\end{proof}
+
+\section{Why the hypothesis resists removal}\label{sec:obstruction}
+
+Removing the hypothesis of Theorem~\ref{thm:1217} would give $12/17$ outright. We did not
+manage it, and we record two obstacles, both of which we checked, so that the route is not
+re-attempted blindly.
+
+\subsection*{Local replacements shift cycle lengths by one}
+
+Bisch~\cite{Bisch} constrains the offending configuration tightly: if $v, v'$ are adjacent
+and every other neighbour of either has degree at least $4$, then $v$ and $v'$ have a
+\emph{unique} common neighbour $u$, and $\olddeg u = 4$. So each $K_2$ component comes
+with a triangle $v v' u$ whose apex has degree exactly $4$, its two remaining neighbours
+being cubic.
+
+Every way we found of destroying such a component changes cycle lengths additively:
+
+\begin{itemize}[nosep]
+  \item delete $v, v'$ and join $u$ to the two outer $\Vbig$ neighbours: a $2^k$ cycle
+        upstairs lifts to $2^k + 1$ or $2^k + 2$;
+  \item delete $v, v', u$ and join the apex's other two neighbours: lifts to $2^k+1$;
+  \item contract the triangle to a single vertex: shortens cycles by $0$ or $1$ depending
+        on the entry and exit edges, hence non-uniformly;
+  \item delete the apex and rewire its neighbours in pairs: lifts to $2^k+1$.
+\end{itemize}
+
+Since $2^k + 1$ and $2^k+2$ are not powers of two, minimality yields no contradiction in
+any of these cases. The obstruction is structural rather than a failure of ingenuity:
+replacing a $2$-path by an edge shifts every cycle through it by exactly one, and the
+powers of two are too sparse for an additive shift to land on another one. The argument of
+Section~\ref{sec:strict} escapes this only because in the perfect-matching case the
+operation is \emph{uniformly multiplicative} --- $G$ is a subdivision of the contraction,
+every cycle doubles, and $2^k \mapsto 2^{k+1}$. A single edge inside $\Vthree$ destroys
+that uniformity.
+
+\subsection*{Counting alone cannot beat two thirds}
+
+More is true: the extremal configuration appears to be consistent with all of the
+structural facts currently available. Take $G[\Vthree]$ to be a perfect matching in which
+every degree-$4$ apex serves two $K_2$ components --- so $u \sim v, v', p, p'$ with
+$v \sim v'$ and $p \sim p'$ --- and let the remaining $\Vbig$ vertices have degree $4$,
+each absorbing one edge from four distinct components. Then $\Vbig$ is independent, every
+vertex has a cubic neighbour, the uniqueness in Bisch's proposition is respected, no
+$4$-cycle is forced, and the count closes at exactly $\cardV{\Vbig} = \cardV{\Vthree}/2$.
+
+Consequently no argument that uses only Theorem~\ref{thm:reform} together with the known
+structural lemmas can improve on $2/3$: any improvement must invoke the cycle condition,
+which is precisely what the additive obstruction above blocks. Breaking the deadlock needs
+either an operation on the $K_2$ configuration that scales all cycle lengths
+multiplicatively, or a new structural lemma about the apexes.
+
+\section{Formalization}\label{sec:formal}
+
+Every numbered statement above is proved in Lean~4 against \texttt{Mathlib}, with no use of
+\texttt{sorry}. The development is organised as
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+File & Contents \\
+\midrule
+\leanname{EGCStrict.lean}  & hypothesis bundle, counting, the equality analysis, the contraction \\
+\leanname{EGCLift.lean}    & the cycle lifting; Theorem~\ref{thm:strict} \\
+\leanname{EGCDensity.lean} & Theorem~\ref{thm:reform}, Corollary~\ref{cor:bisch}, Theorem~\ref{thm:1217} \\
+\leanname{EGCBridge.lean}  & derives the hypothesis bundle from Bisch's \leanname{IsMinCex} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each theorem was checked with \verb|#print axioms| to depend only on \texttt{propext},
+\texttt{Classical.choice} and \texttt{Quot.sound}; the audit files are
+\leanname{AxiomCheck.lean}, \leanname{BridgeCheck.lean} and \leanname{DensityCheck.lean}.
+Bisch's file is not redistributed --- its repository carries no licence --- so
+\leanname{EGCBridge} is not a default build target and expects the file to be fetched
+locally; the other three modules build and prove their statements without it, conditional
+on the hypothesis bundle.
+
+\section{Attribution}\label{sec:attribution}
+
+The mathematics of Section~\ref{sec:strict} is due to the forum user \texttt{jul059}
+\cite{jul059}. Their comment supplies the equality analysis, the contraction, the reason it
+is simple, and the doubling of cycle lengths; it was posted explicitly as unverified. Our
+contribution there is the formalization, including the distinctness bookkeeping. The
+structural lemmas are Carr's~\cite{Carr}, formalized by Bisch~\cite{Bisch}, who also
+proved the non-strict $2/3$ bound. Sections~\ref{sec:reform}, \ref{sec:cond}
+and~\ref{sec:obstruction} are ours.
+
+We would welcome direction from \texttt{jul059} on how they wish to be credited; we have
+used the handle because no name is attached to the posting.
+
+\begin{thebibliography}{9}
+
+\bibitem{Bisch}
+A.~Bisch.
+\newblock \emph{On the density of cubic vertices in a minimal counterexample to the
+Erd\H{o}s--Gy\'arf\'as conjecture}.
+\newblock Zenodo, \doi{10.5281/zenodo.21574476}. Lean formalization:
+\url{https://github.com/AJBisch/AJBisch.github.io/blob/main/EGC.lean}.
+
+\bibitem{Carr}
+A.~Carr.
+\newblock \emph{Every minimal counterexample to the Erd\H{o}s--Gy\'arf\'as conjecture is
+predominantly cubic}.
+\newblock arXiv:2605.22844.
+
+\bibitem{Garcia}
+D.~Garcia.
+\newblock \emph{Small graphs without power-of-two cycles: a lower bound of 24, a correction
+to a construction of Exoo, and explicit bounds for $f(k)$}.
+\newblock arXiv:2609.04686.
+
+\bibitem{jul059}
+\texttt{jul059}.
+\newblock Comment on Erd\H{o}s Problem \#64, 26 July 2026.
+\newblock \url{https://www.erdosproblems.com/forum/thread/64\#post-8130}.
+
+\bibitem{LiuMontgomery}
+H.~Liu and R.~Montgomery.
+\newblock \emph{A solution to Erd\H{o}s and Hajnal's odd cycle problem}, and related work on
+cycle lengths in graphs of large average degree.
+\newblock See the discussion at \url{https://www.erdosproblems.com/64}.
+
+\bibitem{Markstrom}
+K.~Markstr\"om.
+\newblock \emph{Extremal graphs for some problems on cycles in graphs}.
+\newblock Congressus Numerantium 171 (2004).
+
+\end{thebibliography}
+
+\end{document}
