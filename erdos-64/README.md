@@ -90,11 +90,11 @@ plausible.
 The published bound in this line is Carr's $4/7$
 ([arXiv:2605.22844](https://arxiv.org/abs/2605.22844), "Every Minimal Counterexample to the
 Erdős–Gyárfás Conjecture is Predominantly Cubic"). Bisch's $\ge 2/3$ improvement is on Zenodo
-with a Lean 4 formalization but is not published, and a forum argument by `jul059`
-(26 Jul 2026) strengthens it to a strict $> 2/3$ via $|V_3| \ge 2|V_{\ge 4}| + 1$, posted as
-unverified. **That strict bound is now formalized in this repository** — see
-`formalization-egc/` and section 6 — with no `sorry`, conditional only on the Carr/Bisch
-facts about a minimal counterexample.
+with a Lean 4 formalization but is not published, and a forum argument by
+[`jul059`](https://www.erdosproblems.com/forum/thread/64#post-8130) (26 Jul 2026) strengthens it to a strict $> 2/3$ via
+$|V_3| \ge 2|V_{\ge 4}| + 1$, posted as unverified. **That argument is theirs; this
+repository contributes its formalization** — see `formalization-egc/` and section 6 — with
+no `sorry` and no hypotheses beyond Bisch's own `IsMinCex`.
 
 A second forum claim, Guillem Duran-Ballester's 250-page argument, is incomplete: a reviewer
 produced an arithmetic counterexample to its Lemma 7.37(a), the author conceded, and the
@@ -370,8 +370,9 @@ about minimal counterexamples rather than checking a candidate graph:
 $$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad 	ext{hence} \qquad 3|V_3| > 2|V|,$$
 
 i.e. strictly more than two thirds of the vertices of a minimal counterexample are cubic.
-Carr's published bound is $4/7$; Bisch's $\ge 2/3$ is unpublished; the strict version
-existed only as a forum comment marked unverified. This is a machine-checked proof of it.
+Carr's published bound is $4/7$; Bisch's $\ge 2/3$ is unpublished; the strict version was
+posted as an unverified forum comment by [`jul059`](https://www.erdosproblems.com/forum/thread/64#post-8130). **The argument is theirs.**
+What is contributed here is the machine-checked proof of it.
 
 The argument: the double count $4|V_4| \le e(V_4,V_3) \le 2|V_3|$ gives $|V_3| \ge 2|V_4|$,
 and equality would force every $V_4$ vertex to have degree exactly 4 and every cubic vertex

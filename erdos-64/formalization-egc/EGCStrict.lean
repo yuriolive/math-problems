@@ -17,10 +17,11 @@ Known results, in order:
 * Bisch (Zenodo 10.5281/zenodo.21574476, with a `sorry`-free Lean 4 formalization at
   <https://github.com/AJBisch/AJBisch.github.io/blob/main/EGC.lean>): `|V₃| ≥ (2/3)|V|`,
   via `4|V₄| ≤ e(V₄, V₃) ≤ 2|V₃|`.
-* A forum argument by user `jul059` (erdosproblems.com/forum/thread/64, 26 July 2026),
-  posted as unverified: the inequality is *strict*, because equality would let one
-  contract `V₃` and produce a smaller graph of minimum degree 4, whose power-of-two
-  cycle lifts back to `G`.
+* A forum argument by user `jul059`, 26 July 2026, posted as unverified:
+  <https://www.erdosproblems.com/forum/thread/64#post-8130>
+  The inequality is *strict*, because equality would let one contract `V₃` and produce a
+  smaller graph of minimum degree 4, whose power-of-two cycle lifts back to `G`. The
+  strategy below is theirs; the formalization is what this development contributes.
 
 This file formalizes that last step: `|V₃| ≥ 2|V₄| + 1`, hence `3|V₃| > 2|V|`.
 

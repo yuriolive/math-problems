@@ -34,9 +34,12 @@ neighbour, no 4-cycles, minimality in the order, and the absence of power-of-two
 Carr proved the first two mathematically (arXiv:2605.22844); Bisch formalized them and
 improved the density bound to `≥ 2/3`.
 
-Ours: the equality analysis, the contraction, and the cycle lifting that upgrade `≥ 2/3`
-to the strict `> 2/3` — the argument sketched by forum user `jul059` on 26 July 2026 and
-posted there as unverified.
+`jul059`'s, the mathematical argument for strictness: the equality analysis, the
+contraction, and the observation that a cycle upstairs lifts to one of twice the length.
+Posted as unverified on 26 July 2026, <https://www.erdosproblems.com/forum/thread/64#post-8130>.
+
+Ours: only the Lean formalization of that argument, and this bridge. No step of the
+mathematics below originates here.
 -/
 
 import EGCStrict

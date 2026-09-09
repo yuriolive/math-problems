@@ -36,8 +36,9 @@ $$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad	ext{hence}\qquad 3|V_3| > 2|V|.$$
 Published state for comparison: Carr's $4/7$
 ([arXiv:2605.22844](https://arxiv.org/abs/2605.22844)) is the literature bound; Bisch's
 $\ge 2/3$ is on Zenodo with a Lean formalization but unpublished; the strict $> 2/3$
-existed only as a forum comment by `jul059` (26 July 2026) explicitly marked unverified.
-This is a machine-checked proof of that argument.
+existed only as a forum comment by [`jul059`](https://www.erdosproblems.com/forum/thread/64#post-8130) (26 July 2026), explicitly marked
+unverified. **The argument is theirs**; this repository contributes the machine-checked
+proof of it.
 
 `EGCStrict.lean` — the counting and the equality analysis:
 

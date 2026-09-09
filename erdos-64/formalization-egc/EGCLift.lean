@@ -4,6 +4,23 @@
 `EGCStrict` reduces the strict two-thirds bound to one geometric fact: a cycle in the
 contracted graph lifts to a cycle of twice the length in `G`. This file builds that lift.
 
+## Attribution
+
+The mathematical argument formalized here is **not ours**. It is due to forum user
+`jul059`, posted on the Erdős Problems forum on 26 July 2026 and explicitly marked as
+unverified:
+
+  https://www.erdosproblems.com/forum/thread/64#post-8130
+  (user page: https://www.erdosproblems.com/forum/user/jul059)
+
+Their comment gives the whole strategy: equality in `4|V₄| ≤ e(V₄,V₃) ≤ 2|V₃|` forces
+every `V₄` vertex to have degree 4 and every cubic vertex to have exactly two `V₄`
+neighbours; replacing each cubic vertex by an edge between its two `V₄` neighbours yields
+a smaller 4-regular graph, which is simple precisely because `G` has no 4-cycle; and a
+`2^k` cycle there becomes a `2^(k+1)` cycle in `G`. What this file adds is the Lean
+formalization of that last step, including the distinctness bookkeeping the informal
+argument leaves implicit.
+
 The construction: a contraction edge `a ~ b` exists because some cubic vertex `x` is
 adjacent to both, so a walk `a → b` in the contraction becomes `a → x → b` in `G`. Doing
 this along a whole cycle doubles its length.
