@@ -21,29 +21,34 @@ Two rules this driver follows, both from the repository's working rules:
   compiled checker (`verifier_857`'s `check` binary), which re-derives uniformity,
   distinctness and the sunflower count from scratch. A model the solver calls SAT but the
   checker rejects is a bug and stops the run.
-* **"Absent" never means "not evaluated".** An `s` that times out is recorded as `unknown`,
-  never as unsatisfiable, so a timeout can never be read as an exact value.
+* **"Absent" never means "not evaluated".** An `s` that exhausts its budget is recorded as
+  `lower-bound-only` and printed with a trailing `+`, never as an exact value.
+
+Cells are independent, so they run across processes. The solver is CaDiCaL 1.9.5 via
+python-sat; it is a pure SAT solver and much faster here than an SMT solver.
 
     uv run python sat/sweep.py --n 6 --k 3
-    uv run python sat/sweep.py --n 4-9 --all-k --timeout 60
-    uv run python sat/sweep.py --n 6 --k 3 --verify-against-brute
+    uv run python sat/sweep.py --n 4-12 --all-k --budget 120 --jobs 30
+    uv run python sat/sweep.py --n 3-6 --all-k --verify-against-brute
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
-import shutil
+import os
 import subprocess
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
 try:
-    import z3
+    from pysat.card import CardEnc, EncType
+    from pysat.formula import IDPool
+    from pysat.solvers import Cadical195
 except ImportError:
-    sys.exit("z3 is required: it is declared in pyproject.toml, so run under `uv run`")
+    sys.exit("python-sat is required: declared in pyproject.toml, so run under `uv run`")
 
 HERE = Path(__file__).resolve().parent
 PROBLEM_ROOT = HERE.parent
@@ -66,22 +71,8 @@ def binary(name: str) -> Path:
     return path
 
 
-@dataclass
-class Instance:
-    """The k-subsets of [n] and every sunflower triple among them."""
-
-    n: int
-    k: int
-    sets: list[int]
-    triples: list[tuple[int, int, int]]
-
-    @property
-    def num_sets(self) -> int:
-        return len(self.sets)
-
-
-def load_instance(n: int, k: int) -> Instance:
-    """Enumerate via the compiled helper: the triple loop is O(N^3)."""
+def load_instance(n: int, k: int) -> tuple[list[int], list[tuple[int, int, int]]]:
+    """The k-subsets of [n] and every sunflower triple, via the compiled enumerator."""
     out = subprocess.run(
         [str(binary("triples")), str(n), str(k)],
         capture_output=True, text=True, check=True,
@@ -94,13 +85,12 @@ def load_instance(n: int, k: int) -> Instance:
     head = out[1 + num]
     assert head.startswith("triples "), f"unexpected header {head!r}"
     count = int(head.split()[1])
-    triples = []
-    for line in out[2 + num : 2 + num + count]:
-        a, b, c = line.split()
-        triples.append((int(a), int(b), int(c)))
+    triples = [
+        tuple(int(v) for v in line.split())
+        for line in out[2 + num : 2 + num + count]
+    ]
     assert len(triples) == count, f"expected {count} triples, parsed {len(triples)}"
-
-    return Instance(n=n, k=k, sets=sets, triples=triples)
+    return sets, triples  # type: ignore[return-value]
 
 
 def verify_with_checker(n: int, sets: list[int]) -> dict:
@@ -112,45 +102,52 @@ def verify_with_checker(n: int, sets: list[int]) -> dict:
     try:
         return json.loads(proc.stdout)
     except json.JSONDecodeError:
-        sys.exit(f"checker produced no JSON (exit {proc.returncode}): {proc.stdout[:200]}")
+        raise RuntimeError(
+            f"checker produced no JSON (exit {proc.returncode}): {proc.stdout[:200]}"
+        )
 
 
-def satisfiable(inst: Instance, s: int, timeout_sec: float) -> tuple[str, list[int] | None]:
-    """Is there an admissible family of size >= s? Returns (status, model).
+def decide(
+    sets: list[int],
+    triples: list[tuple[int, int, int]],
+    s: int,
+    budget: int,
+) -> tuple[str, list[int] | None]:
+    """Is there an admissible family of size >= s?
 
-    status is "sat", "unsat" or "unknown"; "unknown" is never collapsed into "unsat".
+    Returns ("sat", masks) | ("unsat", None) | ("unknown", None). `budget` caps conflicts;
+    exceeding it yields "unknown", which the caller must not read as "unsat".
     """
-    if s > inst.num_sets:
+    num = len(sets)
+    if s > num:
         return "unsat", None
     if s <= 0:
         return "sat", []
 
-    solver = z3.Solver()
-    xs = [z3.Bool(f"x{i}") for i in range(inst.num_sets)]
+    pool = IDPool(start_from=num + 1)
+    clauses: list[list[int]] = [[-(a + 1), -(b + 1), -(c + 1)] for a, b, c in triples]
 
-    # No triple may be fully chosen.
-    for a, b, c in inst.triples:
-        solver.add(z3.Or(z3.Not(xs[a]), z3.Not(xs[b]), z3.Not(xs[c])))
+    # At least s of the variables true. Sequential encoding, with auxiliaries drawn from
+    # the pool so they cannot collide with the set variables.
+    card = CardEnc.atleast(
+        lits=list(range(1, num + 1)), bound=s, vpool=pool, encoding=EncType.seqcounter
+    )
+    clauses.extend(card.clauses)
 
-    # z3's native cardinality, rather than a hand-rolled counter: fewer moving parts, and
-    # a sequential counter over the negated literals would need N - s auxiliaries per
-    # position, which is the larger bound in exactly the regime that matters here.
-    solver.add(z3.AtLeast(*xs, s))
+    with Cadical195(bootstrap_with=clauses) as solver:
+        if budget > 0:
+            solver.conf_budget(budget)
+            result = solver.solve_limited(expect_interrupt=False)
+        else:
+            result = solver.solve()
 
-    solver.set("timeout", int(timeout_sec * 1000))
-    result = solver.check()
-
-    if result == z3.sat:
-        model = solver.model()
-        chosen = [
-            inst.sets[i]
-            for i in range(inst.num_sets)
-            if z3.is_true(model.eval(xs[i], model_completion=True))
-        ]
+        if result is None:
+            return "unknown", None
+        if not result:
+            return "unsat", None
+        model = set(solver.get_model())
+        chosen = [sets[i] for i in range(num) if (i + 1) in model]
         return "sat", chosen
-    if result == z3.unsat:
-        return "unsat", None
-    return "unknown", None
 
 
 @dataclass
@@ -168,48 +165,44 @@ class Cell:
     def ratio(self) -> float:
         return self.best ** (1.0 / self.n) if self.best and self.n else 0.0
 
+    @property
+    def label(self) -> str:
+        return f"{self.best}{'' if self.status == 'exact' else '+'}"
 
-def solve_cell(n: int, k: int, timeout_sec: float, verbose: bool) -> Cell:
-    inst = load_instance(n, k)
-    cell = Cell(n=n, k=k, num_sets=inst.num_sets, num_triples=len(inst.triples))
 
-    # Climb from 1: the first s that is not satisfiable settles the maximum, and every
-    # satisfiable step leaves a checked witness behind.
+def solve_cell(n: int, k: int, budget: int) -> Cell:
+    """Climb s until unsatisfiable. Runs in a worker process; returns a plain Cell."""
+    sets, triples = load_instance(n, k)
+    cell = Cell(n=n, k=k, num_sets=len(sets), num_triples=len(triples))
+
     s = 1
     while True:
-        status, model = satisfiable(inst, s, timeout_sec)
+        status, model = decide(sets, triples, s, budget)
 
         if status == "sat":
             checked = verify_with_checker(n, model)
             if not checked.get("admissible"):
-                sys.exit(
-                    f"CHECKER REJECTED a model the solver called sat at "
-                    f"n={n} k={k} s={s}: {checked}. This is a bug, not a result."
+                raise RuntimeError(
+                    f"CHECKER REJECTED a model CaDiCaL called sat at n={n} k={k} s={s}: "
+                    f"{checked}. This is a bug, not a result."
                 )
             if checked["size"] < s:
-                sys.exit(
+                raise RuntimeError(
                     f"model at n={n} k={k} has {checked['size']} sets, asked for >= {s}"
                 )
             if checked["k"] != k:
-                sys.exit(f"model at n={n} k={k} has k={checked['k']}")
+                raise RuntimeError(f"model at n={n} k={k} has k={checked['k']}")
             cell.best = checked["size"]
             cell.best_family = model
-            if verbose:
-                print(f"    s={s}: sat (checked, size {checked['size']})", flush=True)
             s = checked["size"] + 1
             continue
 
         if status == "unsat":
-            if verbose:
-                print(f"    s={s}: unsat -> maximum is {cell.best}", flush=True)
             cell.status = "exact"
             return cell
 
-        # Timeout. Rule 2: this is not evidence of unsatisfiability.
         cell.status = "lower-bound-only"
-        cell.note = f"timed out at s={s} after {timeout_sec:g}s"
-        if verbose:
-            print(f"    s={s}: unknown (timeout) -> {cell.best}+ only", flush=True)
+        cell.note = f"budget {budget} conflicts exhausted at s={s}"
         return cell
 
 
@@ -231,77 +224,82 @@ def parse_range(spec: str) -> list[int]:
 
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--n", required=True, help="order, or a range like 4-9")
+    ap.add_argument("--n", required=True, help="order, or a range like 4-12")
     ap.add_argument("--k", help="set size, or a range; omit with --all-k")
     ap.add_argument("--all-k", action="store_true", help="every k from 2 to n-1")
-    ap.add_argument("--timeout", type=float, default=60.0, help="per-decision seconds")
+    ap.add_argument("--budget", type=int, default=200000,
+                    help="conflict budget per decision; 0 means unlimited")
+    ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 2),
+                    help="worker processes (default: cores - 2)")
     ap.add_argument("--verify-against-brute", action="store_true",
-                    help="cross-check every cell against exhaustive search")
+                    help="cross-check every exact cell against exhaustive search")
     ap.add_argument("--json", help="write results to this file")
     ap.add_argument("-q", "--quiet", action="store_true")
     args = ap.parse_args(argv)
 
-    ns = parse_range(args.n)
-    if not args.all_k and not args.k:
-        ap.error("give --k or --all-k")
+    cells_wanted: list[tuple[int, int]] = []
+    for n in parse_range(args.n):
+        ks = list(range(2, n)) if args.all_k else parse_range(args.k or "")
+        for k in ks:
+            if 1 <= k < n:
+                cells_wanted.append((n, k))
+    if not cells_wanted:
+        ap.error("no cells selected; give --k or --all-k")
 
     verbose = not args.quiet
+    jobs = max(1, min(args.jobs, len(cells_wanted)))
+    if verbose:
+        print(f"{len(cells_wanted)} cells, {jobs} workers, "
+              f"budget {args.budget or 'unlimited'} conflicts/decision", flush=True)
+
     cells: list[Cell] = []
-    record_hits: list[Cell] = []
-
-    for n in ns:
-        ks = list(range(2, n)) if args.all_k else parse_range(args.k)
-        for k in ks:
-            if k >= n or k < 1:
-                continue
-            if verbose:
-                print(f"n={n} k={k}", flush=True)
-            cell = solve_cell(n, k, args.timeout, verbose)
-
-            if args.verify_against_brute:
-                if cell.status != "exact":
-                    print(f"    brute check skipped: cell is {cell.status}")
-                else:
-                    b = brute_max(n, k)
-                    if b != cell.best:
-                        sys.exit(
-                            f"DIFFERENTIAL FAILURE at n={n} k={k}: "
-                            f"SAT says {cell.best}, exhaustive search says {b}"
-                        )
-                    if verbose:
-                        print(f"    brute agrees: {b}")
-
+    with ProcessPoolExecutor(max_workers=jobs) as pool:
+        futures = {
+            pool.submit(solve_cell, n, k, args.budget): (n, k)
+            for n, k in cells_wanted
+        }
+        for fut in as_completed(futures):
+            n, k = futures[fut]
+            cell = fut.result()  # a checker rejection raises here, which is intended
             cells.append(cell)
-            if cell.status == "exact" and cell.ratio > RECORD_CITABLE:
-                record_hits.append(cell)
             if verbose:
-                mark = "" if cell.status == "exact" else "+"
-                print(f"  -> Munif({n},{k}) = {cell.best}{mark}  "
+                print(f"  n={cell.n} k={cell.k}: Munif = {cell.label}  "
                       f"ratio {cell.ratio:.6f}", flush=True)
+
+    if args.verify_against_brute:
+        for c in cells:
+            if c.status != "exact":
+                print(f"  brute check skipped at n={c.n} k={c.k}: {c.status}")
+                continue
+            b = brute_max(c.n, c.k)
+            if b != c.best:
+                sys.exit(
+                    f"DIFFERENTIAL FAILURE at n={c.n} k={c.k}: "
+                    f"SAT says {c.best}, exhaustive search says {b}"
+                )
+        if verbose:
+            print("  exhaustive search agrees on every exact cell")
 
     print()
     print(f"{'n':>3} {'k':>3} {'subsets':>8} {'triples':>9} {'Munif':>7} "
           f"{'ratio':>9}  status")
-    print("-" * 60)
+    print("-" * 62)
     for c in sorted(cells, key=lambda c: (c.n, c.k)):
-        mark = "" if c.status == "exact" else "+"
         print(f"{c.n:>3} {c.k:>3} {c.num_sets:>8} {c.num_triples:>9} "
-              f"{str(c.best) + mark:>7} {c.ratio:>9.6f}  {c.status}"
-              + (f" ({c.note})" if c.note else ""))
+              f"{c.label:>7} {c.ratio:>9.6f}  {c.status}")
 
     print()
     best = max((c for c in cells if c.best), key=lambda c: c.ratio, default=None)
     if best:
-        print(f"best ratio seen: {best.ratio:.6f} at n={best.n} k={best.k} "
-              f"(size {best.best})")
-        print(f"citable record to beat: {RECORD_CITABLE}   bar: {RECORD_BAR}")
+        print(f"best ratio: {best.ratio:.6f} at n={best.n} k={best.k} "
+              f"(size {best.label})")
+        print(f"citable record {RECORD_CITABLE}, bar {RECORD_BAR}")
         if best.ratio > RECORD_BAR:
             print("*** ABOVE THE BAR -- re-verify independently before claiming anything")
         elif best.ratio > RECORD_CITABLE:
             print("*** above the citable record, below the unpublished bar")
         else:
-            gap = RECORD_CITABLE - best.ratio
-            print(f"short of the record by {gap:.6f}")
+            print(f"short of the record by {RECORD_CITABLE - best.ratio:.6f}")
 
     if args.json:
         Path(args.json).write_text(
@@ -310,10 +308,10 @@ def main(argv: list[str]) -> int:
                     {
                         "n": c.n, "k": c.k, "num_sets": c.num_sets,
                         "num_triples": c.num_triples, "munif": c.best,
-                        "ratio": c.ratio, "status": c.status, "note": c.note,
-                        "family": c.best_family,
+                        "exact": c.status == "exact", "ratio": c.ratio,
+                        "note": c.note, "family": c.best_family,
                     }
-                    for c in cells
+                    for c in sorted(cells, key=lambda c: (c.n, c.k))
                 ],
                 indent=2,
             ),

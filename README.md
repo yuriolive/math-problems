@@ -160,7 +160,7 @@ the recorded failure patterns there are more useful than the shortlist.
 | Lean 4 + Lake, optionally Mathlib | formalization |
 | CUDA (`nvcc`), Ada `sm_89` by default | GPU search |
 | Python ≥ 3.12 via `uv` | orchestration and tooling |
-| Z3 (`z3-solver`) | SAT/SMT encodings; the only third-party Python dependency |
+| Z3 (`z3-solver`), CaDiCaL (`python-sat`) | SAT/SMT encodings; the only third-party Python dependencies |
 | MiKTeX, TeX Live or Tectonic | paper builds |
 | `agy` (Antigravity CLI) | optional; headless via `-p`, structured output via `--json-schema` |
 

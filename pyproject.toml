@@ -5,6 +5,7 @@ description = "Search and formalization pipelines for open problems in mathemati
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "python-sat>=1.9.dev15",
     # z3-solver is the only third-party runtime dependency: problems/erdos/64/sat/run_sat.py
     # imports it. openevolve, pyyaml and tqdm were declared here but imported nowhere.
     "z3-solver>=5.1.0",
