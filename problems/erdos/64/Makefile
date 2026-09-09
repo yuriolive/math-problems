@@ -27,17 +27,17 @@ test-lean: build-lean
 # Stochastic GPU search. n must be even and <= 62: at n = 64 the length 64 is
 # itself a power of two and the kernel has no C64 tier.
 search-gpu:
-	./cuda/swarm_64.exe 36 10000 --threads 10240
+	./cuda/swarm_64.exe 58 10000 --threads 10240
 
 # Seeded polish of the saved candidate for one order.
 polish-gpu:
-	./cuda/swarm_64.exe 36 30000 --threads 10240 --seed-file cuda/best_swarm_n36.json
+	./cuda/swarm_64.exe 58 30000 --threads 10240 --seed-file cuda/f4_best_n58.json
 
 # PES loop (Plan -> Execute -> Summarize) driven by the local `agy` CLI.
-# Defaults start at n = 36: every general cubic graph up to n = 34 is already
-# excluded by exhaustive search.
+# Defaults start at n = 54: the literature's f(4) >= 54 means no cubic
+# counterexample exists below 54 vertices, so any smaller order is provably empty.
 search-pes:
-	uv run python -m engine.loongflow_main --iterations 10 --test-ns 36,38,40
+	uv run python -m engine.loongflow_main --iterations 10 --test-ns 54,56,58
 
 # Z3 search. Powers of two up to n are forbidden; short lengths are enumerated
 # eagerly, longer ones handled by lazy cycle blocking against the Rust verifier.
@@ -45,7 +45,7 @@ search-sat:
 	uv run python sat/run_sat.py 12
 
 search-islands:
-	uv run python engine/main.py --test-ns 36,38 --islands 5 --iterations 10
+	uv run python engine/main.py --test-ns 54,56 --islands 5 --iterations 10
 
 # Regenerates the candidate table in README section 5 from the actual verifier.
 recount:
