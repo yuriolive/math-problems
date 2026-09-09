@@ -1,5 +1,5 @@
 .PHONY: all build-verifier build-cuda build-lean test test-rust test-python test-lean \
-        search-gpu polish-gpu campaign search-sat recount verify report paper paper-clean check-docs clean
+        search-gpu polish-gpu campaign search-sat audit-lean recount verify report paper paper-clean check-docs clean
 
 all: build-verifier build-cuda
 
@@ -20,9 +20,14 @@ test-rust:
 	cargo test --release
 
 test-python:
-	uv run python -m unittest discover -s tests
+	PYTHONPATH=. uv run python -m unittest discover -s tests
 
 test-lean: build-lean
+
+# Rule 8, mechanically: no `sorry` in any source, and every audited theorem resting
+# on the three standard axioms only. Compiles against Mathlib, so it is slow cold.
+audit-lean:
+	cd ../../.. && uv run python tools/lean/audit.py problems/erdos/64/formalization-egc
 
 # Stochastic GPU search. n must be even and <= 62: at n = 64 the length 64 is
 # itself a power of two and the kernel has no C64 tier.

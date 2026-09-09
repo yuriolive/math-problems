@@ -43,6 +43,17 @@ a script proves useful twice, it moves up.
   `uv run python tools/paper/build.py problems/<collection>/<id>/paper`, or `--all`. Shared
   macros live in `tools/paper/shared/preamble.tex`, including `\checkedin{...}` for
   attaching a Lean identifier to a printed statement.
+* **[`tools/intake`](./tools/intake/)** — scaffolds a new problem with the four intake
+  questions unanswered at the top of its README, and `--check` fails while any of them
+  still is. The questions are the ones that would have prevented this repository's two
+  real failures: a campaign over a provably empty region, and a target half of which lay
+  outside the checker's hard limit.
+  `uv run python tools/intake/scaffold.py <collection> <id>`.
+* **[`tools/lean`](./tools/lean/)** — makes rule 8 a command instead of a habit. Scans
+  every Lean source for a `sorry` or `admit` token, then runs each project's `*Check.lean`
+  through `lake env lean` and reads the `#print axioms` output, failing on `sorryAx` or
+  any axiom outside the three standard ones, and flagging separately where a claim rests
+  on a trusted evaluator. `uv run python tools/lean/audit.py`.
 * **[`tools/check_docs.py`](./tools/check_docs.py)** — catches markdown that renders
   broken on GitHub even though it looks fine locally: `#` inside math (KaTeX refuses it),
   a LaTeX word that lost its backslash, and an unescaped `$` that silently opens a math
@@ -89,6 +100,15 @@ Not stylistic. Each of these exists because violating it produced a false result
     a long time without ever beating the annealer it was supposed to help. Keeping it
     cost maintenance and implied a capability the repository did not have. Measure the
     layer, not the idea.
+12. **Choose the problem before the architecture, and check the instrument's reach.**
+    Both failures here were selection failures, not orchestration failures: a sweep over
+    a region a published bound had already emptied, and a target more than half of which
+    sat outside the verifier's 64-vertex limit. Write the limit and the target range down
+    as numbers, in the same units, and compare them. `tools/intake` asks this.
+13. **A flat objective is a proof target.** If a small perturbation does not move the
+    score, evolutionary search has nothing to climb and the effort belongs in
+    formalization instead. This is the single best predictor of which instrument will
+    work, and it is cheap to answer in advance.
 
 ## Problems
 

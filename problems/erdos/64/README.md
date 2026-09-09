@@ -1,11 +1,55 @@
 # Erdős Problem #64: The Erdős–Gyárfás Conjecture Pipeline
 
-A search pipeline for Erdős Problem #64, combining a compiled 64-bit Rust cycle verifier, a
-CUDA swarm annealer (RTX 4070 Super), a Z3 SAT/SMT encoding, an LLM Plan-Execute-Summary loop
-driven by the local `agy` CLI, and a Lean 4 formalization. No external API keys are required.
+A search and formalization pipeline for Erdős Problem #64, combining a compiled 64-bit Rust
+cycle verifier, a CUDA swarm annealer (RTX 4070 Super), a Z3 SAT/SMT encoding, and two Lean 4
+projects.
 
 The conjecture is **open**. Nothing in this repository is a counterexample, and no part of it
 constitutes a proof.
+
+---
+
+## 0. Intake, in retrospect
+
+The intake questions in [`tools/intake`](../../../tools/intake/) were written from this
+problem, after the fact. Answering them here is the worked example, and it is not a
+flattering one: three of the four fail, and both failures this repository actually paid
+for are visible in the answers.
+
+### 1. Can a compiled ground-truth checker be written in about a day?
+
+**Answer: yes.** `verifier/` is a bitmask cycle counter with differential tests against a
+slow independent reference. This is the part that went right, and it is why the false
+results here were caught at all.
+
+### 2. Does the objective have a gradient?
+
+**Answer: no, and this is the decisive one.** The objective is a lexicographic integer
+profile over $(C_4, C_8, C_{16}, C_{32})$. Most degree-preserving edge swaps leave every
+tier unchanged, so there is nothing to climb: the landscape is flat with a cliff. Compare
+LoongFlow's circle-packing result, where an improvement in the twelfth decimal place is a
+real signal — that is a problem with gradient, and it is why evolutionary search wins
+there and stalled here. A no answer means the problem is a **proof target, not a search
+target**, which is exactly where this repository's only real result came from.
+
+### 3. Is there a published open gap strictly easier than the conjecture?
+
+**Answer: yes.** $f(4) \in [54, 78]$, on the scale function $f(k)$ = order of the smallest
+cubic graph with no cycle of length $2^m$ for any $m \le k$. Genuinely open and far more
+tractable than the conjecture.
+
+### 4. Is the reachable instance size inside the checker's hard limit?
+
+**Answer: no.** The verifier is a 64-vertex bitmask engine, and the kernel refuses
+$n > 62$ because it has no $C_{64}$ tier. The open gap runs to 78. So **more than half of
+the live target was out of reach before any search code ran** — and separately, the
+campaign originally swept $n = 32 \ldots 52$, a region $f(4) \ge 54$ makes provably
+empty. Both facts were available in an afternoon of reading.
+
+**Verdict: a proof target with a partially reachable computational side-problem.** The
+record bears this out. The search side produced no result; the Lean side produced a
+machine-checked strict density bound. The instruments were fine; the target was chosen
+before the questions were asked.
 
 ---
 
@@ -221,10 +265,24 @@ tables in `results.db` are all empty while `runs` is not. The archive, the evalu
 run log and the GPU driver survived the deletion and are listed in the tree above; the
 generative half did not.
 
-The judgement is about this problem, not about LLM search in general: Erdős #64's
-remaining route needs a new structural lemma (see the roadmap), and candidate throughput
-was never the binding constraint. An annealer doing ~8M verified moves/sec is not
-short of candidates.
+The judgement is about this problem and this implementation, not about LLM search. Both
+upstream projects have measurable results: OpenEvolve is a seeded, checkpointing
+implementation of AlphaEvolve (Apache 2.0, `random_seed: 42` by default, and it accepts
+the Claude Code CLI as a backend with no API key), and LoongFlow reports SOTA on 11
+geometry and algebra challenges plus an improved circle packing in the unit square
+(2.6359829624734026, from 2.6358627564136983) for roughly \$10 of Gemini 3 Pro.
+
+What separates those wins from this problem is the shape of the objective, not the
+method. Circle packing is real-valued and rewards an improvement in the twelfth decimal
+place, so there is a gradient to climb. Erdős #64's objective is a lexicographic integer
+profile that most degree-preserving edge swaps leave completely unchanged. Question 2 of
+the intake section above is exactly this test, and this problem fails it.
+
+So the deleted code was a hand-rolled copy of a framework whose real version is
+Apache-2.0 licensed, seeded, and already speaks to the CLIs installed here. If evolutionary
+search is ever wanted for a problem that passes the gradient test, the move is to depend
+on upstream, not to rebuild it: `engine/evaluator.py` is already close to OpenEvolve's
+evaluator interface.
 
 ### IV. SAT / SMT pipeline (`sat/`)
 `sat/cnf_encoder.py` encodes the structural constraints — 3-regularity plus forbidden
