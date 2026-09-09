@@ -45,6 +45,15 @@ def iter_docs(paths: list[str] | None) -> list[Path]:
             if not any(part in SKIP_PARTS for part in p.parts)]
 
 
+def strip_code_spans(line: str) -> str:
+    """Blank out inline `code` spans.
+
+    A dollar or hash inside backticks is literal text, not math, so it must not be
+    counted — otherwise documentation *about* this checker trips it.
+    """
+    return re.sub(r"`[^`]*`", lambda m: " " * len(m.group(0)), line)
+
+
 def math_spans(line: str) -> list[str]:
     """Math spans contained in a single line; display math must be alone on its line."""
     disp = re.fullmatch(r"\s*\$\$(.*)\$\$\s*", line)
@@ -75,6 +84,8 @@ def check(path: Path) -> list[str]:
             continue
         if in_fence:
             continue
+
+        line = strip_code_spans(line)
 
         # An odd count of unescaped dollars leaves a span open across the document.
         unescaped = len(re.findall(r"(?<!\\)\$", line.replace("$$", "")))
