@@ -18,9 +18,9 @@ from dataclasses import dataclass
 from typing import Any
 
 try:
-    from .island import GraphProgram
+    from .program import GraphProgram
 except ImportError:  # direct script execution
-    from island import GraphProgram
+    from program import GraphProgram
 
 
 def pow2_decade(total_pow2_cycles: int) -> int:

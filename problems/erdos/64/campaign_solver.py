@@ -1,8 +1,7 @@
 """Multi-order search campaign for Erdős Problem #64.
 
 Sweeps a list of vertex counts with the CUDA swarm, verifies every result with the
-compiled Rust verifier, keeps a candidate file per order, and optionally interleaves
-PES (Plan-Execute-Summarize) cycles driven by the local `agy` CLI.
+compiled Rust verifier, and keeps the best candidate file per order.
 
 Two rules this runner enforces, both of which the earlier version broke:
 
@@ -33,14 +32,11 @@ if sys.platform == "win32":
 root_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(root_dir))
 
-from engine.agy_client import AgyError
 from engine.evaluator import verify_with_rust_binary, find_verifier_binary
-from engine.executor import execute_plan
-from engine.planner import generate_plan
-from engine.summarizer import summarize_and_reflect
 from engine.pes_memory import EvolutionaryMemory
+from engine.program import GraphProgram
 from engine.seeding import seed_archive_from_candidates, seed_archive_from_generators
-from engine.main import init_db, log_program, export_lean_certificate
+from engine.store import init_db, export_lean_certificate
 
 logging.basicConfig(
     level=logging.INFO,
@@ -144,7 +140,6 @@ def execute_campaign(
     target_ns: list[int] | None = None,
     swarm_iters: int = 50000,
     rounds: int = 3,
-    run_pes: bool = True,
     threads: int = 10240,
     count_cap: int = 1000,
 ):
@@ -233,7 +228,6 @@ def execute_campaign(
                 ce_file = cuda_dir / f"CANDIDATE_COUNTEREXAMPLE_n{n}.json"
                 ce_file.write_text(json.dumps(g_data, indent=2), encoding="utf-8")
 
-                from engine.island import GraphProgram
                 prog = GraphProgram(
                     id=f"counterexample_n{n}",
                     code=f"# Counterexample adjacency at n={n}:\nadj = {g_data.get('adj')}",
@@ -248,40 +242,6 @@ def execute_campaign(
 
         if found_counterexample:
             break
-
-        if run_pes:
-            print(f"\n===== ROUND {rnd}/{rounds}: PES COGNITIVE CYCLE =====")
-            target_n = target_ns[(rnd - 1) % len(target_ns)]
-            print(f"Targeting n={target_n}...")
-            try:
-                elites = memory.map_elites.get_elites()
-                parent = max(elites, key=lambda p: p.fitness) if elites else None
-                blueprint = generate_plan(parent, memory, target_n=target_n, timeout_sec=90.0)
-                print("Blueprint:")
-                for line in blueprint.splitlines()[:5]:
-                    print(f"   | {line}")
-
-                child, code = execute_plan(
-                    blueprint, parent, test_ns=[target_n], timeout_sec=90.0, count_cap=count_cap
-                )
-                print(f"Synthesized: fitness {child.fitness:.1f} | cubic {child.all_cubic} | "
-                      f"girth {child.girth}")
-
-                if child.is_counterexample:
-                    print("\nPES produced a graph the verifier calls a counterexample.")
-                    export_lean_certificate(child, formalization_dir)
-                    found_counterexample = True
-                    break
-
-                summary = summarize_and_reflect(blueprint, child, memory, timeout_sec=90.0)
-                if summary.get("lesson"):
-                    print(f"Lesson: {summary['lesson']}")
-                log_program(conn, run_id, child)
-            except AgyError as e:
-                logger.warning("PES stage skipped, LLM unavailable: %s", e)
-                run_pes = False
-            except Exception as e:
-                logger.error("PES stage failed: %s", e)
 
     with conn:
         conn.execute(
@@ -301,7 +261,6 @@ def main():
     parser.add_argument("--threads", type=int, default=10240, help="CUDA threads")
     parser.add_argument("--count-cap", type=int, default=1000,
                         help="max cycles counted per length during verification")
-    parser.add_argument("--no-pes", action="store_true", help="skip the LLM cycles")
     args = parser.parse_args()
 
     orders = [int(x.strip()) for x in args.orders.split(",") if x.strip()]
@@ -309,7 +268,6 @@ def main():
         target_ns=orders,
         swarm_iters=args.iters,
         rounds=args.rounds,
-        run_pes=not args.no_pes,
         threads=args.threads,
         count_cap=args.count_cap,
     )

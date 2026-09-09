@@ -131,18 +131,15 @@ problems/erdos/64/
 ├── sat/                          # Z3-based SAT/SMT encoding of the constraints
 │   ├── cnf_encoder.py
 │   └── run_sat.py
-├── engine/                       # LLM search loop (`agy -p`) and supporting archives
-│   ├── loongflow_main.py         # Plan-Execute-Summary orchestrator
-│   ├── planner.py                # Stage 1: blueprint before code
-│   ├── executor.py               # Stage 2: code synthesis, verification, GPU polish
-│   ├── summarizer.py             # Stage 3: reflection, memory update
-│   ├── pes_memory.py             # MAP-Elites archive + episodic lesson store
-│   ├── map_elites.py             # Quality-diversity archive
-│   ├── baseline_graphs.py        # Markström, generalized Petersen, ring generators
+├── engine/                       # Candidate evaluation, archive and run log
 │   ├── evaluator.py              # Subprocess bridge to verifier_64
-│   ├── agy_client.py             # Local `agy` CLI wrapper
-│   ├── main.py, island.py,       # Island-model evolutionary loop
-│   │   mutator.py, seeding.py
+│   ├── gpu.py                    # Runs the CUDA swarm, seeded, and reads its output
+│   ├── program.py                # The candidate record and its ranking key
+│   ├── store.py                  # SQLite run log and Lean certificate export
+│   ├── map_elites.py             # Quality-diversity archive
+│   ├── pes_memory.py             # Archive host and episodic lesson store
+│   ├── seeding.py                # Fills the archive from saved candidates
+│   ├── baseline_graphs.py        # Markström, generalized Petersen, ring generators
 │   └── report.py                 # Progress reporter
 ├── tests/test_pipeline.py        # Python unit tests
 ├── formalization/                # Lean 4 (Lake) project — builds, Lean core only
@@ -209,19 +206,25 @@ problems/erdos/64/
   serialized the untested tiers as `false`. That reads as "absent" but meant "not checked",
   which is how the false table in section 5 came about.
 
-### III. Plan-Execute-Summary loop (`engine/loongflow_main.py`)
-The Plan-Execute-Summary (PES) rhythm is a pattern **borrowed** from Baidu's LoongFlow agent
-framework (<https://github.com/baidu-baige/LoongFlow>). **LoongFlow is not a dependency of
-this repository**: there is no import of it, no entry for it in `pyproject.toml`, and no
-vendored code. `planner.py`, `executor.py` and `summarizer.py` are local modules that shell
-out to the `agy` CLI.
+### III. The LLM synthesis loop, and why it was removed
+An earlier version of this directory carried a Plan-Execute-Summary (PES) loop and an
+island-model evolutionary engine — roughly 1,065 lines across `loongflow_main.py`,
+`planner.py`, `summarizer.py`, `mutator.py`, `island.py`, `agy_client.py`, `main.py` and
+the synthesis half of `executor.py` — which shelled out to the local `agy` CLI to write
+graph generators. The PES rhythm was a pattern borrowed from Baidu's LoongFlow
+(<https://github.com/baidu-baige/LoongFlow>), never a dependency: no import, no
+`pyproject.toml` entry, no vendored code.
 
-1. **Planner** — reads MAP-Elites coverage and `lessons_learned.json`, then writes an explicit
-   mathematical blueprint (ring lifts, Cayley graphs, snark covers) before any code exists.
-2. **Executor** — synthesizes the generator, verifies candidates with `verifier_64`, and hands
-   promising graphs to the GPU swarm as a seed.
-3. **Summarizer** — reflects on the reported cycle witness and appends a distilled rule to
-   `lessons_learned.json`.
+It was deleted because it never produced a measurable result. No graph it synthesized
+beat the CUDA annealer at any order, and the `programs`, `evaluations` and `discoveries`
+tables in `results.db` are all empty while `runs` is not. The archive, the evaluator, the
+run log and the GPU driver survived the deletion and are listed in the tree above; the
+generative half did not.
+
+The judgement is about this problem, not about LLM search in general: Erdős #64's
+remaining route needs a new structural lemma (see the roadmap), and candidate throughput
+was never the binding constraint. An annealer doing ~8M verified moves/sec is not
+short of candidates.
 
 ### IV. SAT / SMT pipeline (`sat/`)
 `sat/cnf_encoder.py` encodes the structural constraints — 3-regularity plus forbidden
@@ -243,24 +246,20 @@ make build-cuda                      # or: cuda\build.bat  (set CUDA_ARCH to ove
 # 2. Tests (cargo test + python unittest)
 make test
 
-# 3. Multi-order campaign. Defaults: --orders 36,38,40,42,44,48 --iters 50000
-#    --rounds 3 --threads 10240 --count-cap 1000. --no-pes skips the LLM cycles.
-uv run python campaign_solver.py --orders 36,38,40,42,44 --rounds 3
+# 3. Multi-order campaign. Defaults: --orders 54,56,58,60,62 --iters 50000
+#    --rounds 3 --threads 10240 --count-cap 1000. Orders below 54 are provably empty.
+uv run python campaign_solver.py --orders 54,56,58 --rounds 3
 
 # 4. Standalone GPU swarm. Defaults: n = 32, 2000 iterations, --threads 10240,
 #    --temp 4, --count-cap 1000000, --stagnation 2000. n > 62 is refused.
-./cuda/swarm_64.exe 36 50000 --seed-file cuda/best_swarm_n36.json
+./cuda/swarm_64.exe 58 50000 --seed-file cuda/f4_best_n58.json
 
-# 5. Plan-Execute-Summary loop. Defaults: --iterations 5 --test-ns 36,38,40
-#    --timeout 90 --count-cap 1000.
-uv run python -m engine.loongflow_main --iterations 5 --test-ns 36,38,40
-
-# 6. Verify one candidate (never trust the kernel's own energy)
-uv run python tools/verify_graph.py cuda/best_swarm_n36.json --cap 100000
-./target/release/verifier_64.exe --full --cap 100000 < cuda/best_swarm_n36.json
+# 5. Verify one candidate (never trust the kernel's own energy)
+uv run python tools/verify_graph.py cuda/f4_best_n58.json --cap 100000
+./target/release/verifier_64.exe --full --cap 100000 < cuda/f4_best_n58.json
 ./target/release/verifier_64.exe --markstrom     # built-in fixtures: --k4, --petersen
 
-# 7. Regenerate the table in section 5
+# 6. Regenerate the table in section 5
 uv run python tools/recount_candidates.py --cap 100000
 ```
 

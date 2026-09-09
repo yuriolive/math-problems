@@ -1,5 +1,5 @@
 .PHONY: all build-verifier build-cuda build-lean test test-rust test-python test-lean \
-        search-gpu polish-gpu search-pes search-sat search-islands recount verify report paper paper-clean check-docs clean
+        search-gpu polish-gpu campaign search-sat recount verify report paper paper-clean check-docs clean
 
 all: build-verifier build-cuda
 
@@ -33,19 +33,15 @@ search-gpu:
 polish-gpu:
 	./cuda/swarm_64.exe 58 30000 --threads 10240 --seed-file cuda/f4_best_n58.json
 
-# PES loop (Plan -> Execute -> Summarize) driven by the local `agy` CLI.
-# Defaults start at n = 54: the literature's f(4) >= 54 means no cubic
-# counterexample exists below 54 vertices, so any smaller order is provably empty.
-search-pes:
-	uv run python -m engine.loongflow_main --iterations 10 --test-ns 54,56,58
+# Multi-order GPU campaign, verified per order. Starts at the f(4) >= 54 floor:
+# below 54 vertices no cubic counterexample exists, so smaller orders are empty.
+campaign:
+	uv run python campaign_solver.py
 
 # Z3 search. Powers of two up to n are forbidden; short lengths are enumerated
 # eagerly, longer ones handled by lazy cycle blocking against the Rust verifier.
 search-sat:
 	uv run python sat/run_sat.py 12
-
-search-islands:
-	uv run python engine/main.py --test-ns 54,56 --islands 5 --iterations 10
 
 # Regenerates the candidate table in README section 5 from the actual verifier.
 recount:

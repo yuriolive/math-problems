@@ -13,10 +13,10 @@ from pathlib import Path
 
 try:
     from .evaluator import evaluate_graph_code
-    from .island import GraphProgram
+    from .program import GraphProgram
 except ImportError:  # direct script execution
     from evaluator import evaluate_graph_code
-    from island import GraphProgram
+    from program import GraphProgram
 
 logger = logging.getLogger(__name__)
 

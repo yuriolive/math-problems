@@ -21,8 +21,8 @@ from engine.evaluator import (
     score_detail,
     verify_with_rust_binary,
 )
-from engine.island import GraphIslandManager, GraphProgram
 from engine.map_elites import MapElitesArchive, pow2_decade
+from engine.program import GraphProgram, rank_key
 from engine.seeding import candidate_to_generator_code
 from sat.cnf_encoder import Erdos64SatEncoder
 
@@ -206,38 +206,31 @@ class TestArchive(unittest.TestCase):
         self.assertEqual(archive.get_elites()[0].id, "strong")
 
 
-class TestIslands(unittest.TestCase):
-    def test_global_best_never_downgrades(self):
-        """A cubic but low-scoring program must not displace a high-scoring one.
+class TestRanking(unittest.TestCase):
+    """The ranking key, which used to order candidates wrongly.
 
-        The old ranking put `all_cubic` above `fitness`, so this exact case
-        regressed the global best.
+    These cases came from the island manager's global-best test; the manager went with
+    the LLM loop but the key it exercised is still what the archive ranks on.
+    """
+
+    def test_cubic_does_not_outrank_fitness(self):
+        """A cubic but low-scoring program must not outrank a high-scoring one.
+
+        The old key ordered on (counterexample, all_cubic, fitness), so this exact
+        case regressed the global best.
         """
-        manager = GraphIslandManager(num_islands=2, max_population_per_island=4)
         strong = GraphProgram(id="strong", code="s", fitness=50000.0,
                               is_counterexample=False, all_cubic=False)
         weak_cubic = GraphProgram(id="weak", code="w", fitness=-500.0,
                                   is_counterexample=False, all_cubic=True)
-        self.assertTrue(manager.update_global_best(strong))
-        self.assertFalse(manager.update_global_best(weak_cubic))
-        self.assertEqual(manager.global_best.id, "strong")
+        self.assertEqual(max([strong, weak_cubic], key=rank_key).id, "strong")
 
     def test_counterexample_outranks_everything(self):
-        manager = GraphIslandManager(num_islands=1)
         strong = GraphProgram(id="strong", code="s", fitness=50000.0,
                               is_counterexample=False, all_cubic=True)
         winner = GraphProgram(id="winner", code="w", fitness=1.0,
                               is_counterexample=True, all_cubic=True)
-        manager.update_global_best(strong)
-        self.assertTrue(manager.update_global_best(winner))
-        self.assertEqual(manager.global_best.id, "winner")
-
-    def test_migration_moves_elites(self):
-        manager = GraphIslandManager(num_islands=3, max_population_per_island=5)
-        for i, island in enumerate(manager.islands):
-            island.add(GraphProgram(id=f"p{i}", code=f"code{i}", fitness=float(i),
-                                    is_counterexample=False, all_cubic=True))
-        self.assertGreaterEqual(manager.migrate(num_migrants=1), 1)
+        self.assertEqual(max([strong, winner], key=rank_key).id, "winner")
 
 
 class TestSeeding(unittest.TestCase):

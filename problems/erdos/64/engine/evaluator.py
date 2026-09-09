@@ -330,9 +330,9 @@ def evaluate_graph_code(
     count_cap: int = 1000,
 ):
     try:
-        from .island import GraphProgram
+        from .program import GraphProgram
     except ImportError:
-        from island import GraphProgram
+        from program import GraphProgram
 
     eval_res = evaluate_graph_candidate(
         code, test_ns=test_ns, timeout_sec=timeout_sec, count_cap=count_cap

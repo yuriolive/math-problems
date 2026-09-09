@@ -272,11 +272,10 @@ problem-name/
 ├── sat/                          # SMT / SAT pipeline (Z3 / Kissat)
 │   └── run_sat.py
 ├── engine/                       # LLM PES loop
-│   ├── loongflow_main.py         # Orchestrator
 │   ├── planner.py                # Hypothesis blueprinting
 │   ├── executor.py               # Code synthesis + GPU polish
 │   ├── summarizer.py             # Abductive reflection
-│   ├── pes_memory.py             # MAP-Elites + lessons
+│   ├── map_elites.py             # Quality-diversity archive
 │   ├── map_elites.py             # Quality-diversity archive
 │   └── evaluator.py              # Sandbox & verifier bridge
 └── formalization/                # Lean 4 certificate (no `sorry`)
