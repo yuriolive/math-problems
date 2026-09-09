@@ -34,7 +34,11 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SKIP_PARTS = {".lake", ".git", "__pycache__", "target", "node_modules", ".venv", "vendor"}
+# `vendor` and `upstream` hold third-party Lean that is fetched by hand and not
+# redistributed here. Auditing it would report on someone else's proofs as though they
+# were this repository's, which is the opposite of what rule 8 is for.
+SKIP_PARTS = {".lake", ".git", "__pycache__", "target", "node_modules", ".venv", "vendor",
+              "upstream"}
 
 # The axioms Mathlib itself rests on. A theorem depending only on these is as proved as
 # anything in Mathlib is.
