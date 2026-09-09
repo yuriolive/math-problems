@@ -112,6 +112,11 @@ Not stylistic. Each of these exists because violating it produced a false result
 
 ## Problems
 
+Candidate next problems, scouted and screened against the intake filter, are in
+[`problems/CANDIDATES.md`](./problems/CANDIDATES.md). Twenty were scouted and one survived
+screening; the recorded failure patterns are more useful than the shortlist.
+
+
 ### [`problems/erdos/64`](./problems/erdos/64/) — Erdős–Gyárfás conjecture
 
 Does every finite graph with minimum degree at least 3 contain a cycle whose length is a
