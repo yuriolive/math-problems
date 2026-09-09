@@ -49,3 +49,6 @@ Thumbs.db
 *.out
 *.toc
 *.synctex.gz
+
+# Third-party challenge clone (proximity/koala-irs12): fetched by hand, not redistributed
+problems/proximity/koala-irs12/upstream/
