@@ -48,16 +48,47 @@ whole reason the pass exists.
 | `--skip-build` | source scan only; does not invoke `lake` (fast, no toolchain needed) |
 | _positional_ | audit only the given project directories |
 
+## Audits that could not run
+
+An audit file whose project-local imports are missing is reported as **NOT AUDITED** and
+counted separately — neither a pass nor a failure. `BridgeCheck.lean` is the standing case:
+it needs `EGC.lean`, a third-party file with no license that is gitignored rather than
+redistributed, so on a fresh clone and in CI it cannot be checked at all.
+
+```
+BridgeCheck.lean: SKIPPED, needs absent module `EGC`
+NOT AUDITED: .../BridgeCheck.lean needs `EGC`, which is not present.
+             Its theorems carry no verdict here.
+11 theorem(s) audited ... , 1 audit file(s) skipped
+```
+
+Reporting that as green would be rule 2 — "absent must never mean not evaluated" — broken
+by the tool written to enforce rule 8.
+
+## Relationship to lean-action
+
+[`leanprover/lean-action`](https://github.com/leanprover/lean-action) has its own
+`axiom-audit` input, defaulting to exactly `propext,Classical.choice,Quot.sound`, and this
+repository's CI uses the action to build. What this script adds on top:
+
+* the `sorry`/`admit` **source** scan, which catches a file no audit target imports;
+* the NOT-AUDITED distinction above;
+* the trusted-evaluator call-out (`Lean.ofReduceBool`, `Lean.trustCompiler`);
+* repo-wide project discovery, so a second problem is covered without configuration;
+* the same result locally, with no CI and no network.
+
+CI additionally runs the action's `lean4checker`, which re-checks every proof in the kernel
+independently of the elaborator. That is **stronger** than `#print axioms`, which trusts
+the environment it reads. If the two ever disagree, believe lean4checker.
+
 ## Notes
 
 A Lean project is any directory holding a `lakefile.*` and a `lean-toolchain`. `vendor/`
 is skipped, along with `.lake/` and the usual build directories.
 
-`problems/erdos/64/formalization-egc/BridgeCheck.lean` audits theorems that depend on
-`vendor/EGC.lean`, a third-party file fetched by hand and deliberately not redistributed.
-On a machine without it, `lake` fails and the audit reports that failure rather than
-passing quietly — which is the correct behaviour, but it means a fresh clone will see a
-finding there until the file is fetched.
+`EGC.lean` is gitignored in two places — the project root and `vendor/` — so a fresh
+clone has neither copy and `BridgeCheck.lean` is skipped rather than failing. Fetch the
+file by hand into the project root to audit those four theorems locally.
 
 The full audit compiles against Mathlib and is slow on a cold cache. `--skip-build` is
 the one to use in a tight loop.

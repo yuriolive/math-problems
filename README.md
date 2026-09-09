@@ -81,9 +81,12 @@ make check        # the above plus Python tests, Rust tests, and the Lean axiom 
 ```
 
 Each rule below has a gate behind it wherever one is mechanisable, and
-[`.github/workflows/check.yml`](./.github/workflows/check.yml) runs the fast set on every
-push. CI deliberately does not compile Mathlib, build CUDA, or build the paper, and says
-so in its own summary — a green check is not a claim about axioms or GPU code.
+[`.github/workflows/check.yml`](./.github/workflows/check.yml) runs them on every push,
+including the Lean axiom audit — Mathlib comes from its prebuilt cache rather than being
+compiled, and `lean4checker` re-checks every proof in the kernel. CI does not build CUDA or
+the paper, and cannot check `BridgeCheck.lean` because the third-party file it needs is not
+redistributed; the workflow's last job prints exactly that, so a green check is not a claim
+about GPU code or about those theorems.
 
 ## Working rules
 

@@ -1,10 +1,12 @@
 # Turns the working rules in README.md into gates that run without being remembered.
 #
-# The full Lean axiom audit is deliberately NOT here: it compiles Mathlib, which takes
-# far longer than this workflow should. What runs instead is the source half of rule 8 --
-# the `sorry`/`admit` scan, which needs no toolchain and catches the case that matters
-# most. `make audit-lean` remains the local gate for the axiom half, and the CI summary
-# says so rather than implying the axioms were checked.
+# The Lean axiom audit runs here too, in its own job. It does NOT build Mathlib from
+# source: `lake exe cache get` pulls Mathlib's prebuilt olean files, and the .lake
+# directory is cached on the lake-manifest hash, so the job takes minutes not hours.
+#
+# BridgeCheck.lean is skipped in CI by design -- it needs EGC.lean, a third-party file
+# that carries no license and so is gitignored rather than redistributed. The audit
+# tool reports that as NOT AUDITED, which is neither a pass nor a failure.
 
 name: check
 
@@ -40,7 +42,7 @@ jobs:
       - name: Intake questions answered
         run: uv run python tools/intake/scaffold.py --check
 
-      # Rule 8, source half. Reports explicitly that axioms were NOT audited.
+      # Rule 8, source half -- fast, no toolchain. The axiom half is the `lean` job.
       - name: No sorry in Lean sources
         run: uv run python tools/lean/audit.py --skip-build
 
@@ -64,19 +66,58 @@ jobs:
       - name: Verifier tests
         run: cargo test --release --manifest-path problems/erdos/64/verifier/Cargo.toml
 
+  lean:
+    name: lean axiom audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      # leanprover's own action: installs the toolchain named in lean-toolchain, pulls
+      # Mathlib's prebuilt olean cache rather than compiling it, builds, and caches
+      # .lake between runs. Preferred over a hand-rolled elan install, which meant
+      # piping a remote script into bash.
+      - name: Build and cache Lean
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: problems/erdos/64/formalization-egc
+          test: "false"
+          lint: "false"
+          use-mathlib-cache: "true"
+          # Re-checks every proof in the kernel, independently of the elaborator. This is
+          # strictly stronger than `#print axioms`, which trusts the environment it reads:
+          # lean4checker would catch a proof that only looks well-formed. Slow; drop it if
+          # the job becomes the bottleneck.
+          lean4checker: "true"
+
+      # Every audited theorem on propext, Classical.choice and Quot.sound only.
+      # sorryAx fails the job.
+      - name: Axiom audit
+        run: uv run python tools/lean/audit.py problems/erdos/64/formalization-egc
+
   summary:
     name: what CI does not cover
     runs-on: ubuntu-latest
-    needs: [fast, rust]
+    needs: [fast, rust, lean]
     if: always()
     steps:
       - name: State the gap
         run: |
-          echo "CI ran: docs, intake, the Lean sorry scan, Python tests, verifier tests."
+          echo "CI ran: docs, intake, the Lean sorry scan, Python tests,"
+          echo "        verifier differential tests, and the Lean axiom audit."
           echo ""
           echo "CI did NOT run:"
-          echo "  * the Lean axiom audit (make audit-lean) -- compiles Mathlib"
+          echo "  * BridgeCheck.lean -- needs the unlicensed EGC.lean, which is not"
+          echo "    redistributed. Its theorems carry no verdict from CI."
           echo "  * any CUDA build or GPU search -- no GPU runner"
           echo "  * the paper build -- no TeX installed here"
           echo ""
-          echo "A green check here is not a claim about axioms or GPU code."
+          echo "A green check is not a claim about GPU code, or about the"
+          echo "theorems in BridgeCheck."

@@ -146,6 +146,42 @@ def audit_files(project: Path) -> list[Path]:
     return sorted(p for p in project.glob("*Check.lean"))
 
 
+IMPORT_LINE = re.compile(r"^\s*import\s+([A-Za-z0-9_.]+)", re.MULTILINE)
+
+
+def missing_local_import(project: Path, audit: Path) -> str | None:
+    """Name a project-local module the audit file needs but that is not present.
+
+    `BridgeCheck.lean` imports `EGCBridge`, which imports `EGC` -- a third-party file that
+    carries no license and so is deliberately not redistributed. On a machine without it,
+    the right answer is "this audit was not run", not "this audit failed" and certainly
+    not silence. Walks imports transitively over modules that would live in this project.
+    """
+    seen: set[str] = set()
+    stack = [audit]
+    while stack:
+        f = stack.pop()
+        try:
+            text = f.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for mod in IMPORT_LINE.findall(strip_comments(text)):
+            if mod in seen:
+                continue
+            seen.add(mod)
+            # Only project-local modules are our problem; Mathlib and Lean core are Lake's.
+            root = mod.split(".")[0]
+            if root in {"Mathlib", "Init", "Std", "Lean", "Batteries", "Aesop", "Qq",
+                        "Plausible", "ProofWidgets", "ImportGraph", "LeanSearchClient",
+                        "Cli"}:
+                continue
+            candidates = [project / (mod.replace(".", "/") + ".lean")]
+            if not any(c.is_file() for c in candidates):
+                return mod
+            stack.append(next(c for c in candidates if c.is_file()))
+    return None
+
+
 def run_audit(project: Path, audit: Path) -> tuple[list[Finding], int]:
     """Pass 2: read the `#print axioms` output. Returns (findings, theorems seen)."""
     try:
@@ -224,6 +260,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     findings: list[Finding] = []
+    skipped: list[tuple[str, str]] = []
     audited = 0
 
     for d in projects:
@@ -239,6 +276,11 @@ def main(argv: list[str]) -> int:
             print("  no *Check.lean file, nothing to audit")
             continue
         for a in audits:
+            gone = missing_local_import(d, a)
+            if gone:
+                skipped.append((rel(a), gone))
+                print(f"  {a.name}: SKIPPED, needs absent module `{gone}`")
+                continue
             fs, n = run_audit(d, a)
             findings += fs
             audited += n
@@ -251,6 +293,12 @@ def main(argv: list[str]) -> int:
             print(f"  {f}")
         return 1
 
+    # An audit that could not run is neither a pass nor a failure, and must not be
+    # reported as either. Rule 2, applied to this tool's own output.
+    for where, mod in skipped:
+        print(f"NOT AUDITED: {where} needs `{mod}`, which is not present. Its theorems "
+              f"carry no verdict here.")
+
     # Rule 2 applies to this tool as much as to anything it checks: with --skip-build
     # nothing was audited, and saying "axioms are standard" would be reporting an
     # unevaluated check as a passing one.
@@ -259,8 +307,9 @@ def main(argv: list[str]) -> int:
               f"token found. AXIOMS NOT AUDITED -- run without --skip-build for that.")
         return 0
 
+    tail = f", {len(skipped)} audit file(s) skipped" if skipped else ""
     print(f"{audited} theorem(s) audited across {len(projects)} project(s); "
-          f"axioms are {', '.join(sorted(STANDARD_AXIOMS))} only")
+          f"axioms are {', '.join(sorted(STANDARD_AXIOMS))} only{tail}")
     return 0
 
 
