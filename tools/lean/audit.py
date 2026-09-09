@@ -251,6 +251,14 @@ def main(argv: list[str]) -> int:
             print(f"  {f}")
         return 1
 
+    # Rule 2 applies to this tool as much as to anything it checks: with --skip-build
+    # nothing was audited, and saying "axioms are standard" would be reporting an
+    # unevaluated check as a passing one.
+    if args.skip_build:
+        print(f"source scan only across {len(projects)} project(s): no `sorry` or `admit` "
+              f"token found. AXIOMS NOT AUDITED -- run without --skip-build for that.")
+        return 0
+
     print(f"{audited} theorem(s) audited across {len(projects)} project(s); "
           f"axioms are {', '.join(sorted(STANDARD_AXIOMS))} only")
     return 0

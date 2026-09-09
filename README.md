@@ -68,6 +68,18 @@ Per-problem verifiers, GPU searchers and Lean setups are not yet factored into l
 they follow the documented pattern instead, on the view that the second instance is what
 reveals the right abstraction.
 
+## Running the gates
+
+```bash
+make check-fast   # docs, intake questions, Lean sorry scan -- seconds, Python only
+make check        # the above plus Python tests, Rust tests, and the Lean axiom audit
+```
+
+Each rule below has a gate behind it wherever one is mechanisable, and
+[`.github/workflows/check.yml`](./.github/workflows/check.yml) runs the fast set on every
+push. CI deliberately does not compile Mathlib, build CUDA, or build the paper, and says
+so in its own summary — a green check is not a claim about axioms or GPU code.
+
 ## Working rules
 
 Not stylistic. Each of these exists because violating it produced a false result here.

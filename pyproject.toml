@@ -1,7 +1,7 @@
 [project]
 name = "math-problems"
 version = "0.1.0"
-description = "Search and formalization pipelines for open Erdős problems"
+description = "Search and formalization pipelines for open problems in mathematics"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

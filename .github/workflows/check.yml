@@ -1,0 +1,82 @@
+# Turns the working rules in README.md into gates that run without being remembered.
+#
+# The full Lean axiom audit is deliberately NOT here: it compiles Mathlib, which takes
+# far longer than this workflow should. What runs instead is the source half of rule 8 --
+# the `sorry`/`admit` scan, which needs no toolchain and catches the case that matters
+# most. `make audit-lean` remains the local gate for the axiom half, and the CI summary
+# says so rather than implying the axioms were checked.
+
+name: check
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fast:
+    name: docs, intake, sorry scan, python tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync dependencies
+        run: uv sync
+
+      # Rule 10: markdown that renders on GitHub, not only in an editor.
+      - name: Docs render
+        run: uv run python tools/check_docs.py
+
+      # Rules 12 and 13: no problem carries an unanswered intake question.
+      - name: Intake questions answered
+        run: uv run python tools/intake/scaffold.py --check
+
+      # Rule 8, source half. Reports explicitly that axioms were NOT audited.
+      - name: No sorry in Lean sources
+        run: uv run python tools/lean/audit.py --skip-build
+
+      - name: Python tests
+        run: make test-python
+
+  rust:
+    name: rust verifier tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: problems/erdos/64/verifier
+
+      # The compiled checker is ground truth for every published number, so its
+      # differential tests against the slow reference are the highest-value tests here.
+      - name: Verifier tests
+        run: cargo test --release --manifest-path problems/erdos/64/verifier/Cargo.toml
+
+  summary:
+    name: what CI does not cover
+    runs-on: ubuntu-latest
+    needs: [fast, rust]
+    if: always()
+    steps:
+      - name: State the gap
+        run: |
+          echo "CI ran: docs, intake, the Lean sorry scan, Python tests, verifier tests."
+          echo ""
+          echo "CI did NOT run:"
+          echo "  * the Lean axiom audit (make audit-lean) -- compiles Mathlib"
+          echo "  * any CUDA build or GPU search -- no GPU runner"
+          echo "  * the paper build -- no TeX installed here"
+          echo ""
+          echo "A green check here is not a claim about axioms or GPU code."
