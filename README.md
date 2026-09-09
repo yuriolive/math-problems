@@ -113,7 +113,7 @@ Not stylistic. Each of these exists because violating it produced a false result
 ## Problems
 
 Candidate next problems, scouted and screened against the intake filter, are in
-[`problems/CANDIDATES.md`](./problems/CANDIDATES.md). Twenty were scouted and one survived
+[`problems/CANDIDATES.md`](./problems/CANDIDATES.md). Twenty were scouted and two survived
 screening; the recorded failure patterns are more useful than the shortlist.
 
 
