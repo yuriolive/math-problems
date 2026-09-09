@@ -51,8 +51,7 @@ neither Lean project proves the target theorem.
   * A Lean 4 project that builds with no `sorry`, checking well-formedness, 3-regularity and
     short cycle lengths; the long cycle lengths are checked by the Rust verifier, which is a
     trusted rather than a verified component.
-* See [`erdos-64/README.md`](./erdos-64/README.md) for the measured candidate table and the
-  post-mortem of two bugs that produced earlier, false results.
+* See [`erdos-64/README.md`](./erdos-64/README.md) for the measured candidate table.
 
 ---
 

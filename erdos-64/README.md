@@ -245,39 +245,7 @@ regression fixtures.
 
 ---
 
-## 6. Post-Mortem: the "$C_{16}$ Energy Canyon" That Never Existed
-
-Earlier versions of this file reported a table with $C_{16} = 1$ and $C_{32} = 0$ at every
-order and built a section of topological analysis on top of it — a "$C_{16}$ energy canyon" in
-which 2-opt moves supposedly could not break the last 16-cycle without recreating an 8-cycle.
-None of that was real. The correct account:
-
-1. **The table printed a boolean as a count.** The verifier short-circuited its tiers and
-   emitted `false` for the ones it never reached; the report rendered that as `1` in the
-   $C_{16}$ column and `0` in the $C_{32}$ column. $C_{32}$ was never computed at all. The
-   real counts are in section 5: hundreds to over a thousand 16-cycles, and up to six figures
-   of 32-cycles.
-2. **There was no gradient to get stuck in.** The CUDA cycle counter early-returned once it
-   had found 5 cycles, so the energy saturated at 270 for essentially every graph the swarm
-   touched. The search was not trapped in a canyon; it was optimizing a constant.
-3. **The weighted sum pushed the wrong way.** With
-   $1000|C_4| + 200|C_8| + 50|C_{16}| + 10|C_{32}|$, a single 8-cycle scored 300 while 424
-   16-cycles scored 21220, so any move trading many deep violations for one shallow violation
-   looked like an enormous win. That is backwards: a counterexample needs *every* tier at
-   zero.
-
-Both bugs are fixed. The counter is uncapped inside the active tier by default, and the energy
-is the lexicographic tier key of section 3. With those in place, a 30,000-step seeded run on
-$n = 32$ cut the 16-cycle count from 424 to 219 — a real improvement on a real gradient, and
-still nowhere near a counterexample.
-
-The lesson worth keeping: **confirm that an objective function actually varies before
-attributing a search failure to the shape of the landscape**, and cross-check every counter
-against an independent implementation.
-
----
-
-## 7. What the Lean 4 Formalization Does and Does Not Establish
+## 6. What the Lean 4 Formalization Does and Does Not Establish
 
 `formalization/` is a Lake project that builds (Lean core only, no Mathlib) and contains **no
 `sorry`**.
