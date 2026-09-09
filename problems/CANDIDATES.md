@@ -87,6 +87,31 @@ $2320651/(2^{24}\cdot3^4)$ for the $c_5$ graph. If either fails to reproduce exa
 the objective is not understood. If both reproduce, target **$c_5$ first**, over GAP
 `SmallGroups` of order 384 (20169 groups) and 768 (1090235 groups).
 
+**Gate progress (step 1 of 3 passed).** Both published records are exactly an integer over
+$n^t$, which is what confirms the Lemma 3.2 reading:
+
+| $t$ | $n$ | $n^t$ | record | numerator to reproduce |
+| ---: | ---: | :--- | :--- | ---: |
+| 4 | 768 | $2^{32}\cdot3^4$ | $4551721/150994944 = 0.030144857$ | 10487165184 |
+| 5 | 192 | $2^{30}\cdot3^5$ | $2320651/1358954496 = 0.001707674$ | 445564992 |
+
+Had either come out non-integer, Lemma 3.2 was misread and no correct code would ever
+reproduce the record. Those two integers, not the decimals, are what a checker must hit.
+Reproduce with `uv run python problems/candidates-ramsey-gate.py`.
+
+One correction to the record while doing this: a source fetch asserted "$c_t$ is an
+infimum" while also saying a finite graph gives a lower bound. Those are inconsistent. The
+sequence $k_t(n)/\binom{n}{t}$ is non-decreasing, so its limit is the **supremum** and
+every finite term sits below $c_t$ — a single finite graph gives a *lower* bound and cannot
+produce the record. Only the blow-up limit does. Confirmed from the source: $c_4$'s graph
+is order 768 in $\mathbb{Z}_3	imes\mathbb{Z}_2^8$, $c_5$'s is order 192 in
+$\mathbb{Z}_3	imes\mathbb{Z}_2^6$, and Theorem 1.2 reads
+$0.001524 < c_5 \le 2320651\cdot2^{-24}\cdot3^{-4} < 0.001708$.
+
+**Steps 2 and 3 remain.** Not started: the Rust blow-up cost function, and the bit-exact
+assertion against those two integers. **Zenodo was returning 504 when the data fetch was
+attempted**, so the core graphs from doi:10.5281/zenodo.6602512 are not yet in hand.
+
 **Risks.** Every published gain came from raising the group order, and the authors warn the
 true optimal construction "could be unexpectedly complex" and that whether *any* finite
 blow-up attains $c_4$ is open. Race risk is real: AlphaEvolve has just done nine classical
