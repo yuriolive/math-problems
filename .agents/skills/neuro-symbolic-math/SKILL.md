@@ -373,9 +373,12 @@ break produced a confident, false claim in a README.
 6. **Keep the frontier honest.** Cite the exhaustive-search bound and start the search above
    it. Results below a settled frontier are regression fixtures, not discoveries — label them
    that way.
-7. **Write post-mortems into the docs, not just into commit messages.** When a published claim
-   turns out to be a bug, replace it with what actually happened and why the old number
-   appeared. The corrected doc is the only place a future reader will look.
+7. **Replace a falsified claim, do not annotate it.** When a published number turns out to be
+   a bug, delete it and put the measured value in its place. Keep the account of what went
+   wrong in the commit message, where it stays available without becoming part of the project
+   guide — a reader wants the current state of the work, not a history of its corrections.
+   The one thing that must survive into the docs is any consequence still in force: a
+   component that is trusted rather than verified, or a bound that no longer holds.
 8. **Every number in a write-up must come from a command you ran or a source you can cite.**
    If neither applies, leave it out. "Over 7.5 billion moves computed" and "51 million swaps in
    ~750 ms" are the shape of claims that get generated rather than measured.
