@@ -59,6 +59,11 @@ a script proves useful twice, it moves up.
   a LaTeX word that lost its backslash, and an unescaped `$` that silently opens a math
   span across paragraphs. All three have occurred here. Run
   `uv run python tools/check_docs.py`; it exits non-zero, so it can gate a commit.
+* **[`.agents/agents`](./.agents/agents/)** — four subagent roles, one per class of
+  mistake already made here: `literature-scout`, `claim-auditor`, `lean-prover` and
+  `candidate-screener`. The screener has the track record —
+  [`tools/intake/screening-prompt.txt`](./tools/intake/screening-prompt.txt) is its prompt
+  form, and it rejected 18 of 20 candidates in the first pass.
 * **[`.agents/skills/neuro-symbolic-math`](./.agents/skills/neuro-symbolic-math/)** — the
   methodology: how to scaffold a problem, how to build a checker that cannot quietly lie,
   how to design a search objective that actually has a gradient, and the working rules
@@ -175,3 +180,18 @@ power of two? Open.
 | `agy` (Antigravity CLI) | optional; headless via `-p`, structured output via `--json-schema` |
 
 Use `uv run python ...` rather than a bare `python`, so the pinned environment is used.
+
+## License
+
+Apache 2.0 — see [`LICENSE`](./LICENSE). The same license both OpenEvolve and LoongFlow
+use, so results and tooling here compose with them.
+
+Two carve-outs, recorded in [`NOTICE`](./NOTICE):
+
+* `problems/erdos/64/formalization-egc/vendor/EGC.lean` is a third-party Lean file that
+  carries **no** license. It is not redistributed here — the directory is gitignored and
+  the file must be fetched by hand — and nothing in `LICENSE` applies to it.
+* A license on code is not authorship of the mathematics it checks. The strict density
+  bound formalized in `EGCStrict.lean` and `EGCLift.lean` is an argument due to the forum
+  contributor **jul059**; the formalization is this repository's work, the mathematics is
+  theirs, and the attribution blocks in those files carry the direct link.

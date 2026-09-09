@@ -1,0 +1,29 @@
+math-problems
+Copyright 2026 Yuri Olive
+
+This product includes software developed as part of the math-problems repository,
+licensed under the Apache License, Version 2.0.
+
+--------------------------------------------------------------------------------
+Third-party material NOT covered by this license
+--------------------------------------------------------------------------------
+
+problems/erdos/64/formalization-egc/vendor/EGC.lean
+
+    A Lean 4 formalization by A. J. Bisch (Zenodo, doi:10.5281/zenodo.21574476).
+    It carries no license, so it is NOT redistributed in this repository: the
+    directory is gitignored and the file must be fetched by hand. See
+    problems/erdos/64/formalization-egc/EGCBridge.lean for what depends on it and
+    why EGCBridge is not a default build target.
+
+--------------------------------------------------------------------------------
+Mathematical arguments credited to their authors
+--------------------------------------------------------------------------------
+
+The strict density bound formalized in EGCStrict.lean and EGCLift.lean is an
+argument due to the forum contributor "jul059", posted to
+https://www.erdosproblems.com/forum/thread/64/proof-claims (post 8130). The Lean
+formalization is this repository's work; the mathematics is theirs. Attribution
+blocks in those files carry the direct link.
+
+A license on code is not authorship of the mathematics it checks.
