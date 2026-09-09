@@ -24,7 +24,7 @@ problems/<collection>/<id>/
 ├── verifier/               compiled ground-truth checker (Rust)
 ├── cuda/                   GPU search, if the problem admits one
 ├── sat/                    SAT/SMT encoding, if it admits one
-├── engine/                 search orchestration
+├── engine/                 candidate evaluation, archive, run log
 ├── formalization*/         Lean 4 projects
 ├── paper/                  main.tex, built by tools/paper
 ├── tools/                  problem-specific scripts
@@ -85,6 +85,10 @@ Not stylistic. Each of these exists because violating it produced a false result
 9. **Replace a falsified claim, do not annotate it.** Corrections live in the commit
    history; the docs carry the current state.
 10. **Every number traceable** to a command that was run or a source that can be cited.
+11. **Delete a layer that has produced nothing.** An LLM synthesis loop ran here for
+    a long time without ever beating the annealer it was supposed to help. Keeping it
+    cost maintenance and implied a capability the repository did not have. Measure the
+    layer, not the idea.
 
 ## Problems
 
@@ -131,6 +135,6 @@ power of two? Open.
 | Python ≥ 3.12 via `uv` | orchestration and tooling |
 | Z3 (`z3-solver`) | SAT/SMT encodings; the only third-party Python dependency |
 | MiKTeX, TeX Live or Tectonic | paper builds |
-| `agy` CLI | optional LLM-driven code mutation, no API keys |
+| `agy` (Antigravity CLI) | optional; headless via `-p`, structured output via `--json-schema` |
 
 Use `uv run python ...` rather than a bare `python`, so the pinned environment is used.
