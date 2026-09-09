@@ -31,16 +31,16 @@ Bisch's file is not vendored — his repository carries no license. Each field o
 `MinCexHyps` is a statement his `IsMinCex` already establishes, so the two compose; the
 mapping is recorded on each field.
 
-The new content here is the equality analysis: `equalityCase`, the contracted graph
-`contract`, its 4-regularity, and `strict_of_lift`.
+The new content is the equality analysis: the contracted graph `contract`, its
+4-regularity, and (in `EGCLift`) the cycle lifting that closes the argument.
 
 ## Status
 
-`|V₃| ≥ 2|V₄|` (`card_cubic_ge`) and the whole equality analysis are proved. The final
-step needs one geometric lemma — that a power-of-two cycle in the contracted graph lifts
-to a cycle of twice the length in `G` — which appears as the explicit hypothesis
-`LiftsCycles`. It is *not* a `sorry`: it is a named obligation visible in the statement of
-`strict_of_lift`, and discharging it is the remaining work.
+Complete, with no `sorry` and no hypotheses beyond `MinCexHyps`. This file proves
+`|V₃| ≥ 2|V₄|` and the equality analysis (every `V₄` vertex has degree exactly 4, every
+cubic vertex exactly two `V₄` neighbours, and the contraction is 4-regular on strictly
+fewer vertices). `EGCLift` lifts a cycle back from the contraction and concludes
+`|V₃| ≥ 2|V₄| + 1`, hence `3|V₃| > 2|V|`.
 -/
 
 import Mathlib
@@ -329,26 +329,6 @@ lemma card_big_lt (hcubic : (cubic G).Nonempty) :
     rw [mem_cubic] at hv; omega
   exact Fintype.card_subtype_lt (p := fun u => 4 ≤ G.degree u) hnot
 
-/-!
-### The remaining obligation
-
-A power-of-two cycle in `contract G` becomes a cycle of twice that length in `G`: walk the
-same `V₄` vertices, inserting between consecutive ones the cubic vertex that joins them.
-The inserted vertices are pairwise distinct — a cubic vertex determines the unordered pair
-of its two `V₄` neighbours, and distinct edges of a cycle of length at least 3 are distinct
-pairs — and they are distinct from the `V₄` vertices because `V₃` and `V₄` are disjoint.
-
-Formalizing that construction against `Mathlib`'s `Walk`/`IsCycle` is the outstanding
-work. It is stated here as a hypothesis rather than a `sorry`, so nothing in this file
-claims to be proved that is not.
--/
-
-/-- The lifting property: every power-of-two cycle in the contraction gives a
-power-of-two cycle in `G`. -/
-def LiftsCycles (G : SimpleGraph V) [DecidableRel G.Adj] : Prop :=
-  ∀ (u : Big G) (c : (contract G).Walk u u), c.IsCycle → (∃ k : ℕ, c.length = 2 ^ k) →
-    ∃ (v : V) (d : G.Walk v v), d.IsCycle ∧ ∃ k : ℕ, d.length = 2 ^ k
-
 /-- Every vertex of the contraction has degree at least 3 in the equality case.
 
 Each `u ∈ V₄` has exactly 4 neighbours in `G`, all cubic, and the cubic neighbours lead to
@@ -428,50 +408,14 @@ lemma contract_degree_ge (H : MinCexHyps G)
         Finset.card_le_card hsub
     _ = (contract G).degree ⟨u, hu⟩ := hval
 
-/-- **The strict bound.** In the equality case the contraction is a smaller graph of
-minimum degree at least 3, so minimality hands it a power-of-two cycle, which lifts back
-to `G` and contradicts `G` being a counterexample. Hence `|V₃| ≥ 2|V₄| + 1`. -/
-theorem card_cubic_ge_succ (H : MinCexHyps G) (hlift : LiftsCycles G) :
-    2 * (big G).card + 1 ≤ (cubic G).card := by
-  classical
-  rcases Nat.lt_or_ge (2 * (big G).card) (cubic G).card with hlt | hge
-  · omega
-  -- Equality holds, so we may contract.
-  have heq : (cubic G).card = 2 * (big G).card := le_antisymm hge H.card_cubic_ge
-  -- `V` is nonempty and `V₃ ∪ V₄ = V`, so both parts cannot vanish. If `V₄` were
-  -- empty then `|V₃| = 2 * 0 = 0` and hence `|V| = 0`.
-  have hpart := card_cubic_add_card_big H.degree_ge
-  have hVpos : 0 < Fintype.card V := Fintype.card_pos_iff.mpr H.nonempty
-  have hbigpos : 0 < (big G).card := by
-    rcases Nat.eq_zero_or_pos (big G).card with h0 | h
-    · rw [h0] at heq hpart; omega
-    · exact h
-  have hcubic : (cubic G).Nonempty := by
-    have : 0 < (cubic G).card := by omega
-    exact Finset.card_pos.mp this
-  have hbig : (big G).Nonempty := Finset.card_pos.mp hbigpos
-  have hne : Nonempty (Big G) := by
-    obtain ⟨u, hu⟩ := hbig
-    exact ⟨⟨u, mem_big.mp hu⟩⟩
-  obtain ⟨w, c, hc, k, hk⟩ :=
-    H.min_order (Big G) (contract G) hne (card_big_lt hcubic)
-      (fun w => le_trans (by omega) (contract_degree_ge H heq w))
-  obtain ⟨v, d, hd, k', hk'⟩ := hlift w c hc ⟨k, hk⟩
-  exact absurd hk' (H.no_pow2 v d hd k')
+/-!
+### The strict bound
 
-/-- `3|V₃| > 2|V|`: strictly more than two thirds of the vertices are cubic. -/
-theorem strict_two_thirds (H : MinCexHyps G) (hlift : LiftsCycles G) :
-    2 * Fintype.card V < 3 * (cubic G).card := by
-  have hpart := card_cubic_add_card_big H.degree_ge
-  have hstrict := card_cubic_ge_succ H hlift
-  omega
-
-/-- The same statement over `ℚ`: `|V₃| > (2/3)|V|`. -/
-theorem strict_two_thirds_rat (H : MinCexHyps G) (hlift : LiftsCycles G) :
-    (2 / 3 : ℚ) * Fintype.card V < ((cubic G).card : ℚ) := by
-  have h := strict_two_thirds H hlift
-  have h' : (2 * Fintype.card V : ℚ) < 3 * ((cubic G).card : ℚ) := by
-    exact_mod_cast h
-  linarith
+The equality case is now fully analysed: the contraction is a 4-regular graph on strictly
+fewer vertices, so minimality supplies it with a power-of-two cycle. Turning that cycle
+into one of `G` is the content of `EGCLift`, which imports this file; the unconditional
+statements `card_cubic_ge_succ`, `strict_two_thirds` and `strict_two_thirds_rat` are proved
+there.
+-/
 
 end EGCStrict

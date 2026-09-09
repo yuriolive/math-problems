@@ -91,10 +91,10 @@ The published bound in this line is Carr's $4/7$
 ([arXiv:2605.22844](https://arxiv.org/abs/2605.22844), "Every Minimal Counterexample to the
 Erdős–Gyárfás Conjecture is Predominantly Cubic"). Bisch's $\ge 2/3$ improvement is on Zenodo
 with a Lean 4 formalization but is not published, and a forum argument by `jul059`
-(26 Jul 2026) strengthens it to a strict $> 2/3$ via $|V_3| \ge 2|V_{\ge 4}| + 1$ — posted as
-unverified and, as of this writing, neither published nor formalized. Formalizing that
-equality-case argument on top of Bisch's existing Lean scaffold is a small, self-contained
-contribution that is still available.
+(26 Jul 2026) strengthens it to a strict $> 2/3$ via $|V_3| \ge 2|V_{\ge 4}| + 1$, posted as
+unverified. **That strict bound is now formalized in this repository** — see
+`formalization-egc/` and section 6 — with no `sorry`, conditional only on the Carr/Bisch
+facts about a minimal counterexample.
 
 A second forum claim, Guillem Duran-Ballester's 250-page argument, is incomplete: a reviewer
 produced an arithmetic counterexample to its Lemma 7.37(a), the author conceded, and the
@@ -145,13 +145,15 @@ erdos-64/
 │   │   mutator.py, seeding.py
 │   └── report.py                 # Progress reporter
 ├── tests/test_pipeline.py        # Python unit tests
-└── formalization/                # Lean 4 (Lake) project — builds, Lean core only
-    ├── lean-toolchain
-    ├── lakefile.toml
-    ├── Problem64.lean
-    └── Problem64/
-        ├── Basic.lean            # Cycle predicate and conjecture statement
-        └── Certificate.lean      # Kernel-checked (`by decide`) self-tests
+├── formalization/                # Lean 4 (Lake) project — builds, Lean core only
+│   ├── Problem64.lean
+│   └── Problem64/
+│       ├── Basic.lean            # Cycle predicate and conjecture statement
+│       └── Certificate.lean      # Kernel-checked (`by decide`) self-tests
+└── formalization-egc/            # Lean 4 + Mathlib — the strict 2/3 bound, proved
+    ├── EGCStrict.lean            # Counting and the equality analysis
+    ├── EGCLift.lean              # Cycle lifting and the final bound
+    └── AxiomCheck.lean           # `#print axioms` audit of every theorem
 ```
 
 ---
@@ -359,3 +361,34 @@ order of a million of them — the kernel will not evaluate that. Those lengths 
 the Rust verifier, which is therefore a **trusted** component, not a verified one. Closing
 that gap requires either a Lean decision procedure with real pruning or an independent
 reimplementation of the counter.
+
+### `formalization-egc/`: the strict two-thirds bound, proved
+
+A second, separate Lake project (this one *does* depend on Mathlib) proves a real theorem
+about minimal counterexamples rather than checking a candidate graph:
+
+$$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad 	ext{hence} \qquad 3|V_3| > 2|V|,$$
+
+i.e. strictly more than two thirds of the vertices of a minimal counterexample are cubic.
+Carr's published bound is $4/7$; Bisch's $\ge 2/3$ is unpublished; the strict version
+existed only as a forum comment marked unverified. This is a machine-checked proof of it.
+
+The argument: the double count $4|V_4| \le e(V_4,V_3) \le 2|V_3|$ gives $|V_3| \ge 2|V_4|$,
+and equality would force every $V_4$ vertex to have degree exactly 4 and every cubic vertex
+to have exactly two $V_4$ neighbours. Contracting $V_3$ then yields a 4-regular graph on
+strictly fewer vertices, so minimality supplies it with a power-of-two cycle — and
+re-inserting the cubic vertices turns that into a cycle of twice the length in $G$, which
+$G$ cannot have. `EGCLift.lean` builds that lift and proves it is a cycle; the inserted
+vertices are distinct because, in the equality case, a cubic vertex determines the
+contraction edge it came from.
+
+`EGCStrict.lean` has the counting and the equality analysis, `EGCLift.lean` the lifting and
+the final bound. **No `sorry`**, and every theorem audits to `propext`,
+`Classical.choice`, `Quot.sound` only — run `lake env lean AxiomCheck.lean` to see it.
+
+What it assumes: the four Carr/Bisch facts about a minimal counterexample, bundled as
+`MinCexHyps` (minimum degree 3, $V_{\ge 4}$ independent, every vertex has a cubic
+neighbour, minimality in the order, and no power-of-two cycle). Bisch's Lean file proves
+all of them but carries no license, so it is not vendored; each field records which of his
+lemmas supplies it. Discharging `MinCexHyps` from his file would make the theorem
+unconditional.

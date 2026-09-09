@@ -26,35 +26,49 @@ $m \le k$.
 
 ## What this repository can do, ranked by value per unit effort
 
-### 1. Finish the strict two-thirds bound in Lean — *closest to a real contribution*
+### 1. The strict two-thirds bound in Lean — **complete**
 
-`formalization-egc/` contains a `sorry`-free, kernel-checked development of the equality
-analysis behind the strict bound $|V_3| > \tfrac{2}{3}|V|$ for a minimal counterexample.
-Published state: Carr's $4/7$ ([arXiv:2605.22844](https://arxiv.org/abs/2605.22844)) is the
-literature bound; Bisch's $\ge 2/3$ is on Zenodo with a Lean formalization but unpublished;
-the strict $> 2/3$ exists only as an unverified forum comment by `jul059` (26 July 2026).
+`formalization-egc/` proves, with no `sorry` and no hypotheses beyond `MinCexHyps`
+(the Carr/Bisch facts about a minimal counterexample):
 
-Proved here, depending only on `propext`, `Classical.choice`, `Quot.sound`:
+$$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad	ext{hence}\qquad 3|V_3| > 2|V|.$$
 
-* `card_cubic_ge` — the double count $4|V_4| \le e(V_4,V_3) \le 2|V_3|$, so $|V_3| \ge 2|V_4|$.
-* `degree_eq_four_of_equality`, `card_big_nbrs_eq_two_of_equality` — in the equality case
-  every $V_4$ vertex has degree exactly 4 and every cubic vertex has exactly two $V_4$
-  neighbours.
-* `contract`, `contract_degree_ge` — the contraction of $V_3$ is a 4-regular graph on
-  $V_4$. The degree argument is where the absence of 4-cycles is used: two cubic
-  neighbours of `u` leading to the same $V_4$ vertex would close `u–x–w–y–u`.
-* `card_cubic_ge_succ`, `strict_two_thirds`, `strict_two_thirds_rat` — the strict bound.
+Published state for comparison: Carr's $4/7$
+([arXiv:2605.22844](https://arxiv.org/abs/2605.22844)) is the literature bound; Bisch's
+$\ge 2/3$ is on Zenodo with a Lean formalization but unpublished; the strict $> 2/3$
+existed only as a forum comment by `jul059` (26 July 2026) explicitly marked unverified.
+This is a machine-checked proof of that argument.
 
-**The one remaining obligation** is the hypothesis `LiftsCycles`: a power-of-two cycle in
-the contraction lifts to a cycle of twice the length in `G`, by re-inserting the cubic
-vertex between consecutive $V_4$ vertices. Mathematically routine — the inserted vertices
-are distinct because a cubic vertex determines the unordered pair of its two $V_4$
-neighbours, and distinct edges of a cycle are distinct pairs — but it is a genuine piece of
-`Mathlib` `Walk`/`IsCycle` engineering. It is stated as an explicit hypothesis, never a
-`sorry`, so nothing in the file overstates what is proved.
+`EGCStrict.lean` — the counting and the equality analysis:
 
-Effort: hours, not days. Discharging `LiftsCycles` completes a formalization of a result
-that currently exists only as an unverified forum sketch. That is a publishable object.
+* `MinCexHyps.card_cubic_ge` — the double count $4|V_4| \le e(V_4,V_3) \le 2|V_3|$.
+* `degree_eq_four_of_equality`, `card_big_nbrs_eq_two_of_equality` — under equality every
+  $V_4$ vertex has degree exactly 4 and every cubic vertex exactly two $V_4$ neighbours.
+* `contract`, `contract_degree_ge` — contracting $V_3$ yields a 4-regular graph on $V_4$.
+  This is the step that consumes the absence of 4-cycles: two cubic neighbours of `u`
+  leading to the same $V_4$ vertex would close `u–x–w–y–u`.
+* `card_big_lt` — the contraction has strictly fewer vertices.
+
+`EGCLift.lean` — the cycle lifting, which is what closes the argument:
+
+* `mid` — the cubic vertex realizing a contraction edge, with `adj_mid_left/right`.
+* `mid_determines_pair` — a cubic vertex determines the contraction edge it came from,
+  because in the equality case it has exactly two $V_4$ neighbours. This is what makes the
+  inserted vertices pairwise distinct along a trail.
+* `lift`, `length_lift` — replace each contraction edge by its two-edge path; length
+  doubles.
+* `nodup_support_lift`, `exists_pow2_cycle_of_contract_cycle` — the lifted walk is a
+  cycle, so a $2^k$ cycle upstairs becomes a $2^{k+1}$ cycle in $G$.
+* `card_cubic_ge_succ`, `strict_two_thirds`, `strict_two_thirds_rat` — the bound.
+
+Every theorem audits to `propext`, `Classical.choice`, `Quot.sound` only
+(`AxiomCheck.lean`). Bisch's file is not vendored — his repository carries no license —
+so the facts it proves are taken as the `MinCexHyps` bundle, with each field annotated
+with the lemma of his that supplies it. The two developments compose.
+
+**What would finish this as a contribution:** discharge `MinCexHyps` from Bisch's Lean
+file (or reprove those four facts here) to get an unconditional theorem about minimal
+counterexamples, then write it up. The mathematical content is done.
 
 ### 2. Close $f(4) \in [54, 78]$ — the live computational gap
 
