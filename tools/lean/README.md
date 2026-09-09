@@ -77,9 +77,10 @@ repository's CI uses the action to build. What this script adds on top:
 * repo-wide project discovery, so a second problem is covered without configuration;
 * the same result locally, with no CI and no network.
 
-CI additionally runs the action's `lean4checker`, which re-checks every proof in the kernel
+CI additionally runs the action's `leanchecker`, which re-checks every proof in the kernel
 independently of the elaborator. That is **stronger** than `#print axioms`, which trusts
-the environment it reads. If the two ever disagree, believe lean4checker.
+the environment it reads, and it is cheap here — 12 seconds on the first CI run. If the
+two ever disagree, believe leanchecker.
 
 ## Notes
 

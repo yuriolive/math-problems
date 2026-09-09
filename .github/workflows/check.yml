@@ -21,10 +21,10 @@ jobs:
     name: docs, intake, sorry scan, python tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -53,7 +53,7 @@ jobs:
     name: rust verifier tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -70,10 +70,10 @@ jobs:
     name: lean axiom audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -93,9 +93,9 @@ jobs:
           use-mathlib-cache: "true"
           # Re-checks every proof in the kernel, independently of the elaborator. This is
           # strictly stronger than `#print axioms`, which trusts the environment it reads:
-          # lean4checker would catch a proof that only looks well-formed. Slow; drop it if
-          # the job becomes the bottleneck.
-          lean4checker: "true"
+          # leanchecker would catch a proof that only looks well-formed. Took 12s on the
+          # first run, so it is not the bottleneck; the Mathlib cache fetch is.
+          leanchecker: "true"
 
       # Every audited theorem on propext, Classical.choice and Quot.sound only.
       # sorryAx fails the job.

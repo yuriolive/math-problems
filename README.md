@@ -132,31 +132,13 @@ Not stylistic. Each of these exists because violating it produced a false result
 
 ## Problems
 
-Candidate next problems, scouted and screened against the intake filter, are in
-[`problems/CANDIDATES.md`](./problems/CANDIDATES.md). Twenty were scouted and two survived
-screening; the recorded failure patterns are more useful than the shortlist.
+| Problem | Status |
+| :--- | :--- |
+| [`erdos/64`](./problems/erdos/64/) — Erdős–Gyárfás conjecture | Open. No counterexample found and published bounds unchanged; a machine-checked strict density bound for a minimal counterexample. [Paper](./problems/erdos/64/paper/main.pdf) · [details](./problems/erdos/64/README.md) · [roadmap](./problems/erdos/64/ROADMAP.md) |
 
-
-### [`problems/erdos/64`](./problems/erdos/64/) — Erdős–Gyárfás conjecture
-
-Does every finite graph with minimum degree at least 3 contain a cycle whose length is a
-power of two? Open.
-
-* **Search side.** No counterexample, and the published bounds are unchanged. The reachable
-  region turned out to be *provably* empty: the literature's $f(4) \ge 54$ means no cubic
-  counterexample exists below 54 vertices, so every order this repository had been sweeping
-  was excluded in advance. The live computational target is instead closing
-  $f(4) \in [54, 78]$, a strictly easier and genuinely open question.
-* **Formalization side.** A machine-checked strict density bound for a hypothetical minimal
-  counterexample, $|V_3| > \tfrac{2}{3}|V|$ — an argument due to a forum contributor,
-  previously unverified — plus a reformulation identifying exactly what controls that
-  constant, and a conditional improvement to $12/17$. No `sorry`; every theorem audits to
-  the three standard axioms.
-* Write-up: [`problems/erdos/64/paper/main.pdf`](./problems/erdos/64/paper/main.pdf).
-  Measured candidate table and details:
-  [`problems/erdos/64/README.md`](./problems/erdos/64/README.md). What is worth trying
-  next, and what is closed:
-  [`problems/erdos/64/ROADMAP.md`](./problems/erdos/64/ROADMAP.md).
+Candidates screened against the intake filter but not started are in
+[`problems/CANDIDATES.md`](./problems/CANDIDATES.md). Twenty were scouted and two survived;
+the recorded failure patterns there are more useful than the shortlist.
 
 ## Adding a problem
 
