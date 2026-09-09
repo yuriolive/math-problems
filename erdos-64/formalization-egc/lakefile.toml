@@ -1,0 +1,10 @@
+name = "EGCStrict"
+version = "0.1.0"
+defaultTargets = ["EGCStrict"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+
+[[lean_lib]]
+name = "EGCStrict"

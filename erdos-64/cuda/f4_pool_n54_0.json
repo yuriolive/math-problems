@@ -294,5 +294,6 @@
   "connected": true,
   "girth": 3,
   "is_erdos_gyarfas_counterexample": false,
-  "saved_at": "2026-09-09T01:58:44.642415+00:00"
+  "saved_at": "2026-09-09T01:58:44.642415+00:00",
+  "rng_seed": 411820240432791552
 }

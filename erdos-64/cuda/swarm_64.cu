@@ -5,6 +5,7 @@
 #include <string>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <cmath>
 #include <curand_kernel.h>
 #include <cuda_runtime.h>
@@ -278,11 +279,16 @@ __global__ void swarm_search_kernel(
     uint64_t* d_all_best_adj,
     unsigned long long* d_moves_evaluated,
     const uint64_t* d_seed_adj,
-    int has_seed
+    int has_seed,
+    unsigned long long rng_seed
 ) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     curandState rng;
-    curand_init(1234ULL + tid, 0, 0, &rng);
+    // rng_seed comes from --rng-seed (default 1234, which reproduces every run recorded
+    // before the flag existed). Changing it is the only way to get an independent
+    // restart: everything else about this kernel is deterministic, so two runs sharing
+    // (n, threads, iterations, seed graph, rng_seed) are bit-identical.
+    curand_init(rng_seed + tid, 0, 0, &rng);
 
     uint64_t adj[MAX_V];
     for (int i = 0; i < n; ++i) adj[i] = 0;
@@ -522,6 +528,10 @@ void print_usage(const char* prog) {
         << "                    32 is the counterexample target. 16 targets f(4),\n"
         << "                    i.e. {4,8,16}-freeness, which allows 32-cycles.\n"
         << "  --stagnation N    steps without improvement before an ILS reheat; default 2000\n"
+        << "  --rng-seed N      unsigned 64-bit base seed for the per-thread RNG; default 1234.\n"
+        << "                    Thread t uses N + t. Runs sharing every other argument and\n"
+        << "                    this seed are bit-identical, so vary it for independent\n"
+        << "                    restarts. The value is echoed in the result JSON.\n"
         << "  --seed-json JSON  start from this graph\n"
         << "  --seed-file PATH  start from the graph in this file (preferred: no argv limit)\n"
         << "  --json-only       emit only the result JSON\n\n"
@@ -537,6 +547,9 @@ int main(int argc, char** argv) {
     int count_cap = 1000000;
     int max_len = 32;
     int stagnation_limit = 2000;
+    // 1234 was hardcoded in the kernel before --rng-seed existed; keeping it as the
+    // default makes every previously recorded run reproducible without the flag.
+    unsigned long long rng_seed = 1234ULL;
     float initial_temp = 4.0f;
     bool json_only = false;
     std::string seed_json_str = "";
@@ -570,6 +583,13 @@ int main(int argc, char** argv) {
             max_len = std::atoi(argv[++i]);
         } else if (arg == "--stagnation" && i + 1 < argc) {
             stagnation_limit = std::atoi(argv[++i]);
+        } else if (arg == "--rng-seed" && i + 1 < argc) {
+            std::string val = argv[++i];
+            if (val.empty() || val.find_first_not_of("0123456789") != std::string::npos) {
+                std::cerr << "Error: --rng-seed takes a non-negative integer" << std::endl;
+                return 2;
+            }
+            rng_seed = std::strtoull(val.c_str(), nullptr, 10);
         } else if (arg == "-h" || arg == "--help") {
             print_usage(argv[0]);
             return 0;
@@ -639,6 +659,9 @@ int main(int argc, char** argv) {
                   << (max_len >= 32 ? " (counterexample target)" : " (f(4) target, 32-cycles allowed)")
                   << std::endl;
         std::cout << "Mode: " << (has_seed ? "Seeded annealing" : "Stochastic search") << std::endl;
+        std::cout << "RNG seed: " << rng_seed << " (thread t uses " << rng_seed
+                  << " + t; pass --rng-seed to replay or to restart independently)"
+                  << std::endl;
     }
 
     int* d_found_flag;
@@ -670,7 +693,7 @@ int main(int argc, char** argv) {
     swarm_search_kernel<<<numBlocks, blockSize>>>(
         n, iterations, initial_temp, cooling_rate, count_cap, max_len, stagnation_limit,
         d_found_flag, d_winning_adj, d_all_best_energy, d_all_best_adj,
-        d_moves_evaluated, d_seed_adj, has_seed
+        d_moves_evaluated, d_seed_adj, has_seed, rng_seed
     );
     cudaError_t launch_err = cudaDeviceSynchronize();
     if (launch_err != cudaSuccess) {
@@ -738,6 +761,7 @@ int main(int argc, char** argv) {
               << ",\"duration_ms\":" << duration_ms
               << ",\"count_cap\":" << count_cap
               << ",\"max_length\":" << max_len
+              << ",\"rng_seed\":" << rng_seed
               << ",\"n\":" << n
               << ",\"adj\":[";
     for (int i = 0; i < n; ++i) {
