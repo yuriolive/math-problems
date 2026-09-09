@@ -62,9 +62,9 @@ Any cubic graph on 54–77 vertices with no $C_4$, $C_8$ or $C_{16}$ improves Ex
 bound. This target **allows 32-cycles**, so it is strictly easier than refuting the
 conjecture and must never be reported as a counterexample.
 
-Run it with `tools/f4_sweep.py` (the kernel takes `--max-length 16` for this objective).
-Best verified counts so far are in README section 5; the search gets $C_{16}$ into the
-tens but not to zero.
+Run it with `tools/f4_sweep.py` (the kernel takes `--max-length 16`); record results with
+`tools/f4_report.py`, which refreshes the table in `README.md`.
+Best verified counts are in README section 5.
 
 Two things limit it today:
 
@@ -73,9 +73,10 @@ Two things limit it today:
   Exoo's 78-vertex graph be re-verified independently — worth doing on its own, since
   Garcia has just found a real error (spurious 8- and 32-cycles) in the sibling $f(5)$
   construction.
-* **Method.** Local search buys a factor of roughly 20 below the random-cubic baseline
-  (about 1300 sixteen-cycles at $n = 60$, measured, against $2^{16}/32 = 2048$ in theory)
-  and then stalls. The record at 78 was set by an algebraic construction, not by annealing.
+* **Method.** Local search buys a factor of roughly 35 below the random-cubic baseline
+  (about 1300 sixteen-cycles at $n = 60$, measured over 25 samples, against
+  $2^{16}/32 = 2048$ in theory for fixed length and large $n$); the best reached is
+  $C_{16} = 37$ at $n = 58$, and then it stalls. The record at 78 was set by an algebraic construction, not by annealing.
   A gadget-substitution search over small base graphs — the family Garcia analyses — is the
   method with a track record here, and it is not implemented in this repository.
 
