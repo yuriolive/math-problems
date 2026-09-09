@@ -67,8 +67,8 @@
   },
   {
     "family": "Search frontier (exhaustive results)",
-    "failure_mode": "Re-searching orders already excluded in the literature",
-    "lesson": "Markstroem (2004) puts a cubic counterexample at n >= 30, and later exhaustive search covers all general cubic graphs to n = 34 and all cubic bipartite graphs to n = 62 with no survivor. Constructions targeting n <= 34 cannot succeed; the open corridor starts at n = 36.",
+    "failure_mode": "Proposing constructions at orders that are provably empty",
+    "lesson": "f(k) is the order of the smallest cubic graph with no cycle of length 2^m for any m <= k. f(2) = 10 (Petersen) and f(3) = 24 (Markstroem) are exact, and 54 <= f(4) <= 78. Since any counterexample on n >= 16 vertices is in particular {C4, C8, C16}-free, f(4) >= 54 means a cubic counterexample needs at least 54 vertices. Constructions targeting n <= 52 propose something that provably does not exist.",
     "cycle_len": 0
   },
   {
@@ -76,5 +76,17 @@
     "failure_mode": "Searching graphs of large minimum degree",
     "lesson": "Liu and Montgomery proved the conjecture true whenever the minimum degree exceeds an absolute constant, which also disproved the stronger Erdos-Gyarfas conjecture. A counterexample can only have very small minimum degree, so degree 3 is the only viable target.",
     "cycle_len": 0
+  },
+  {
+    "family": "f(4) target versus counterexample target",
+    "failure_mode": "Conflating {4,8,16}-freeness with refuting the conjecture",
+    "lesson": "Closing f(4) in [54, 78] only requires a cubic graph with no C4, C8 or C16; 32-cycles are allowed. That is strictly easier than a counterexample, which must avoid every power of two up to n, and it is an open published gap. Score the two objectives separately: the swarm takes --max-length 16 for f(4) and 32 for the counterexample target.",
+    "cycle_len": 16
+  },
+  {
+    "family": "Verified constructions can be wrong",
+    "failure_mode": "Trusting a published construction without recounting it",
+    "lesson": "Garcia (2026) showed the lemma under Exoo's 450-vertex f(5) construction is false: the Tutte-Coxeter graph contains 8-cycles alternating between outer and chord edges, and the graph as specified contains 32-cycles. The bound survived only after repair. Recount any construction you build on, with an independent counter.",
+    "cycle_len": 32
   }
 ]

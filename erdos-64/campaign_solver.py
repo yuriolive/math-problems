@@ -51,9 +51,9 @@ logger = logging.getLogger("CampaignSolver")
 
 POW2_LENGTHS = (4, 8, 16, 32, 64)
 
-# Exhaustive search settles all general cubic graphs up to n = 34, so the campaign
-# starts at the open frontier by default.
-DEFAULT_ORDERS = [36, 38, 40, 42, 44, 48]
+# f(4) >= 54 means no cubic graph below 54 vertices avoids C4, C8 and C16 together, so
+# no counterexample exists below 54. The campaign starts at that floor.
+DEFAULT_ORDERS = [54, 56, 58, 60, 62]
 
 # The CUDA kernel refuses n > 62 because it has no C64 tier.
 MAX_GPU_ORDER = 62
@@ -155,11 +155,11 @@ def execute_campaign(
     print(f"Orders: {target_ns} | Swarm iterations/thread: {swarm_iters} | Threads: {threads}")
     print("=" * 78)
 
-    settled = [n for n in target_ns if n <= 34]
+    settled = [n for n in target_ns if n < 54]
     if settled:
         logger.warning(
-            "Orders %s are already excluded by exhaustive search; no counterexample can "
-            "be found there.", settled
+            "Orders %s are below the f(4) >= 54 floor; no cubic counterexample can exist "
+            "there.", settled
         )
     too_big = [n for n in target_ns if n > MAX_GPU_ORDER]
     if too_big:
@@ -295,7 +295,7 @@ def execute_campaign(
 def main():
     parser = argparse.ArgumentParser(description="Erdos #64 search campaign")
     parser.add_argument("--orders", type=str, default=",".join(str(n) for n in DEFAULT_ORDERS),
-                        help="orders to sweep; n <= 34 is already settled")
+                        help="orders to sweep; n <= 52 is provably empty (f(4) >= 54)")
     parser.add_argument("--iters", type=int, default=50000, help="swarm steps per thread")
     parser.add_argument("--rounds", type=int, default=3, help="campaign rounds")
     parser.add_argument("--threads", type=int, default=10240, help="CUDA threads")

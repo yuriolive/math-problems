@@ -197,7 +197,15 @@ __device__ int count_c32(const uint64_t* adj, int n, int count_cap) {
 // while still giving a unit gradient inside the tier currently being worked on.
 #define TIER_STRIDE 1000000
 
-__device__ int compute_energy(const uint64_t* adj, int n, int count_cap,
+//
+// `max_len` is the deepest cycle length the objective scores. The default is 32,
+// which is the counterexample target for n < 64. Setting it to 16 switches the
+// objective to {4, 8, 16}-freeness, which is the f(4) target from the literature:
+// f(k) is the order of the smallest cubic graph with no cycle of length 2^m for any
+// m <= k, and f(4) is only known to lie in [54, 78]. That target explicitly ALLOWS
+// 32-cycles, so it is strictly easier than refuting the conjecture and must not be
+// confused with it.
+__device__ int compute_energy(const uint64_t* adj, int n, int count_cap, int max_len,
                               int& c4, int& c8, int& c16, int& c32) {
     c8 = -1;
     c16 = -1;
@@ -209,19 +217,21 @@ __device__ int compute_energy(const uint64_t* adj, int n, int count_cap,
     c4 = count_c4(adj, n);
     if (c4 > 0) return 4 * TIER_STRIDE + (c4 < cap ? c4 : cap);
 
+    if (max_len < 8) return 0;
     c8 = count_c8(adj, n, cap);
     if (c8 > 0) return 3 * TIER_STRIDE + c8;
 
+    if (max_len < 16) return 0;
     c16 = count_c16(adj, n, cap);
     if (c16 > 0) return 2 * TIER_STRIDE + c16;
 
-    if (n >= 32) {
+    if (n >= 32 && max_len >= 32) {
         c32 = count_c32(adj, n, cap);
         if (c32 > 0) return 1 * TIER_STRIDE + c32;
     } else {
         c32 = 0;
     }
-    return 0; // C4 = C8 = C16 = C32 = 0 -> candidate counterexample.
+    return 0; // Every scored tier is empty.
 }
 
 // One structure-preserving 2-opt swap, used for warmup and seed perturbation.
@@ -260,6 +270,7 @@ __global__ void swarm_search_kernel(
     float initial_temp,
     float cooling_rate,
     int count_cap,
+    int max_len,
     int stagnation_limit,
     int* d_found_flag,
     uint64_t* d_winning_adj,
@@ -298,7 +309,7 @@ __global__ void swarm_search_kernel(
     }
 
     int c4, c8, c16, c32;
-    int energy = compute_energy(adj, n, count_cap, c4, c8, c16, c32);
+    int energy = compute_energy(adj, n, count_cap, max_len, c4, c8, c16, c32);
     unsigned long long moves_evaluated = 1;
 
     int local_best_energy = energy;
@@ -393,7 +404,7 @@ __global__ void swarm_search_kernel(
         }
 
         int new_c4, new_c8, new_c16, new_c32;
-        int new_energy = compute_energy(adj, n, count_cap, new_c4, new_c8, new_c16, new_c32);
+        int new_energy = compute_energy(adj, n, count_cap, max_len, new_c4, new_c8, new_c16, new_c32);
         moves_evaluated++;
 
         int delta = new_energy - energy;
@@ -507,6 +518,9 @@ void print_usage(const char* prog) {
         << "  --threads N       total CUDA threads; default 10240\n"
         << "  --temp T          initial temperature before the per-thread spread; default 4\n"
         << "  --count-cap N     max cycles counted per tier; default 1000000\n"
+        << "  --max-length L    deepest cycle length scored: 8, 16 or 32 (default 32).\n"
+        << "                    32 is the counterexample target. 16 targets f(4),\n"
+        << "                    i.e. {4,8,16}-freeness, which allows 32-cycles.\n"
         << "  --stagnation N    steps without improvement before an ILS reheat; default 2000\n"
         << "  --seed-json JSON  start from this graph\n"
         << "  --seed-file PATH  start from the graph in this file (preferred: no argv limit)\n"
@@ -521,6 +535,7 @@ int main(int argc, char** argv) {
     int total_threads = 10240;
     int iterations = 2000;
     int count_cap = 1000000;
+    int max_len = 32;
     int stagnation_limit = 2000;
     float initial_temp = 4.0f;
     bool json_only = false;
@@ -551,6 +566,8 @@ int main(int argc, char** argv) {
             initial_temp = (float)std::atof(argv[++i]);
         } else if (arg == "--count-cap" && i + 1 < argc) {
             count_cap = std::atoi(argv[++i]);
+        } else if (arg == "--max-length" && i + 1 < argc) {
+            max_len = std::atoi(argv[++i]);
         } else if (arg == "--stagnation" && i + 1 < argc) {
             stagnation_limit = std::atoi(argv[++i]);
         } else if (arg == "-h" || arg == "--help") {
@@ -581,10 +598,25 @@ int main(int argc, char** argv) {
         std::cerr << "Error: 3-regular graphs need an even vertex count >= 4" << std::endl;
         return 2;
     }
-    if (n > MAX_N_SUPPORTED) {
+    // The n > 62 restriction exists only because there is no C64 tier: at n = 64 the
+    // length 64 is itself a power of two, so energy 0 would not mean counterexample.
+    // With --max-length 16 or 8 the objective does not involve C64 at all (the f(4)
+    // target explicitly allows longer cycles), so n = 64 is admissible there.
+    if (n > MAX_N_SUPPORTED && max_len >= 32) {
         std::cerr << "Error: n = " << n << " exceeds " << MAX_N_SUPPORTED
-                  << ". At n = 64 the length 64 is a power of two and this kernel has no "
-                     "C64 tier, so energy 0 would not mean counterexample." << std::endl;
+                  << " for the counterexample objective. At n = 64 the length 64 is a power "
+                     "of two and this kernel has no C64 tier, so energy 0 would not mean "
+                     "counterexample. Use --max-length 16 to search the f(4) target here."
+                  << std::endl;
+        return 2;
+    }
+    if (n > MAX_V) {
+        std::cerr << "Error: n = " << n << " exceeds the " << MAX_V
+                  << "-vertex bitmask limit." << std::endl;
+        return 2;
+    }
+    if (max_len != 8 && max_len != 16 && max_len != 32) {
+        std::cerr << "Error: --max-length must be 8, 16 or 32" << std::endl;
         return 2;
     }
     if (total_threads < 1 || count_cap < 1 || stagnation_limit < 1 || initial_temp <= 0.0f) {
@@ -603,6 +635,9 @@ int main(int argc, char** argv) {
                   << " | Iterations/Thread: " << iterations << std::endl;
         std::cout << "Initial temp: " << initial_temp << " | Cooling/step: " << cooling_rate
                   << " | Count cap: " << count_cap << std::endl;
+        std::cout << "Objective: lengths up to C" << max_len
+                  << (max_len >= 32 ? " (counterexample target)" : " (f(4) target, 32-cycles allowed)")
+                  << std::endl;
         std::cout << "Mode: " << (has_seed ? "Seeded annealing" : "Stochastic search") << std::endl;
     }
 
@@ -633,7 +668,7 @@ int main(int argc, char** argv) {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     swarm_search_kernel<<<numBlocks, blockSize>>>(
-        n, iterations, initial_temp, cooling_rate, count_cap, stagnation_limit,
+        n, iterations, initial_temp, cooling_rate, count_cap, max_len, stagnation_limit,
         d_found_flag, d_winning_adj, d_all_best_energy, d_all_best_adj,
         d_moves_evaluated, d_seed_adj, has_seed
     );
@@ -686,16 +721,23 @@ int main(int argc, char** argv) {
                   << " million evaluated moves/sec)" << std::endl;
         std::cout << "Best energy reached in swarm: " << h_best_energy << std::endl;
         if (h_found) {
-            std::cout << "Energy 0 reached. Confirm with verifier_64 before claiming anything."
-                      << std::endl;
+            if (max_len >= 32) {
+                std::cout << "Energy 0 reached on the counterexample objective. Confirm with "
+                             "verifier_64 before claiming anything." << std::endl;
+            } else {
+                std::cout << "Energy 0 reached on the f(4) objective: no C4, C8 or C16. This is "
+                             "NOT a counterexample (32-cycles were not scored). Confirm with "
+                             "verifier_64." << std::endl;
+            }
         }
     }
 
-    std::cout << "{\"counterexample_candidate\":" << (h_found ? "true" : "false")
+    std::cout << "{\"objective_met\":" << (h_found ? "true" : "false")
               << ",\"best_energy\":" << h_best_energy
               << ",\"evaluated_moves\":" << total_moves
               << ",\"duration_ms\":" << duration_ms
               << ",\"count_cap\":" << count_cap
+              << ",\"max_length\":" << max_len
               << ",\"n\":" << n
               << ",\"adj\":[";
     for (int i = 0; i < n; ++i) {

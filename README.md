@@ -35,9 +35,15 @@ neither Lean project proves the target theorem.
   ([erdosproblems.com/64](https://www.erdosproblems.com/64)).
 * **Context that shapes the search**: Liu and Montgomery proved the conjecture true once the
   minimum degree exceeds an absolute constant, so only very small minimum degree can host a
-  counterexample. Markström showed a cubic counterexample needs at least 30 vertices, and an
-  exhaustive search reported on the problem forum settles general cubic graphs up to
-  $n \le 34$ — so the open corridor starts at $n = 36$.
+  counterexample. The binding size constraint comes from the $f(k)$ scale — $f(k)$ is the
+  order of the smallest cubic graph with no cycle of length $2^m$ for any $m \le k$, with
+  $f(3) = 24$ exact and $54 \le f(4) \le 78$. Since any counterexample on $n \ge 16$ vertices
+  is $\{C_4, C_8, C_{16}\}$-free, **a cubic counterexample needs at least 54 vertices**, and
+  the orders below that are provably empty rather than merely unsearched.
+* **The open target this tooling fits**: closing $f(4) \in [54, 78]$ — a cubic graph on 54–77
+  vertices with no $C_4$, $C_8$ or $C_{16}$ would improve Exoo's upper bound. That target
+  allows 32-cycles, so it is strictly easier than refuting the conjecture and must not be
+  reported as a counterexample. Run it with `tools/f4_sweep.py`.
 * **Pipeline**:
   * Rust cycle verifier over 64-bit adjacency bitmasks. It tests every power-of-two length
     $\le n$ unconditionally and, with `--full --cap N`, reports exact per-length counts.

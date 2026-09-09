@@ -42,9 +42,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("PES")
 
-# Exhaustive search has already settled all general cubic graphs up to n = 34, so the
-# default targets start at the open frontier.
-DEFAULT_TEST_NS = [36, 38, 40]
+# f(4) >= 54 means no cubic graph below 54 vertices avoids C4, C8 and C16 together, so
+# no counterexample exists below 54 either. Defaults start at that floor.
+DEFAULT_TEST_NS = [54, 56, 58]
 
 
 def select_parent(memory: EvolutionaryMemory, rng: random.Random, tournament: int = 3):
@@ -175,7 +175,7 @@ def main():
         "--test-ns",
         type=str,
         default=",".join(str(x) for x in DEFAULT_TEST_NS),
-        help="comma-separated orders; n <= 34 is already settled by exhaustive search",
+        help="comma-separated orders; n <= 52 is provably empty (f(4) >= 54)",
     )
     parser.add_argument("--timeout", type=float, default=90.0, help="per-LLM-call timeout")
     parser.add_argument("--seed", type=int, default=None, help="RNG seed for parent selection")
@@ -186,11 +186,11 @@ def main():
     args = parser.parse_args()
 
     test_ns = [int(x.strip()) for x in args.test_ns.split(",") if x.strip()]
-    settled = [n for n in test_ns if n <= 34]
+    settled = [n for n in test_ns if n < 54]
     if settled:
         logger.warning(
-            "Orders %s are already covered by exhaustive search (no cubic counterexample "
-            "exists there); they can only serve as warm-up.", settled
+            "Orders %s are below the f(4) >= 54 floor, so no cubic counterexample exists "
+            "there; they can only serve as warm-up.", settled
         )
 
     run_pes(

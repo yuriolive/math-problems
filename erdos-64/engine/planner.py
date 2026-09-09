@@ -19,11 +19,23 @@ KNOWN_CONSTRAINTS = """ESTABLISHED RESULTS (do not contradict these):
 - Liu and Montgomery (2020) proved the conjecture TRUE for every graph whose minimum
   degree exceeds an absolute constant. A counterexample can therefore only have very
   small minimum degree, which is why the search is restricted to cubic graphs.
+- The f(k) scale, where f(k) is the order of the smallest cubic graph with no cycle of
+  length 2^m for any m <= k:
+    f(2) = 10 exactly (the Petersen graph),
+    f(3) = 24 exactly (Markstroem),
+    54 <= f(4) <= 78 (lower bound unpublished, Markstroem; upper bound Exoo),
+    f(5) <= 450 (Garcia 2026, correcting an error in Exoo's construction),
+    f(6) <= 32640 (Garcia 2026).
+- CONSEQUENCE THAT BOUNDS EVERY CONSTRUCTION: f(4) >= 54 means no cubic graph on 53 or
+  fewer vertices avoids C4, C8 and C16 together. Any counterexample on n >= 16 vertices
+  must avoid all three, so a cubic counterexample needs AT LEAST 54 VERTICES. Proposing
+  a construction at n <= 52 is proposing something that provably does not exist.
+- Garcia (2026): every graph of minimum degree >= 3 on at most 23 vertices has a C4 or a
+  C8, so any counterexample needs at least 24 vertices.
 - Markstroem (2004): a cubic counterexample needs at least 30 vertices.
 - Nowbandegani and Esfandiari (2011): a bipartite counterexample needs at least 32.
-- Exhaustive search has since covered all cubic BIPARTITE graphs up to n = 62 with no
-  survivor, and all general cubic graphs up to n = 34. The open frontier for general
-  cubic graphs therefore starts at n = 36.
+  Tranquilli (2026) raised the cubic bipartite bound to 60 by covering n <= 58, and an
+  unpublished sweep reports n <= 62.
 - Settled families, so constructions inside them cannot work: 3-connected cubic planar
   (Heckman-Krakovski), diameter 2 (Carr), claw-free cubic below 114 vertices,
   P8-free and P10-free graphs, and several Cayley families over generalized

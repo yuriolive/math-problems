@@ -373,12 +373,25 @@ break produced a confident, false claim in a README.
 6. **Keep the frontier honest.** Cite the exhaustive-search bound and start the search above
    it. Results below a settled frontier are regression fixtures, not discoveries — label them
    that way.
-7. **Replace a falsified claim, do not annotate it.** When a published number turns out to be
+   Before spending GPU time, find the field's **scale function** and read the bound off it.
+   For Erdős #64 it is $f(k)$, the order of the smallest cubic graph with no cycle of length
+   $2^m$ for any $m \le k$: $f(3) = 24$ exactly and $54 \le f(4) \le 78$. Because any
+   counterexample on $n \ge 16$ vertices is $\{C_4, C_8, C_{16}\}$-free, $f(4) \ge 54$ makes
+   every order below 54 **provably empty** — a fact that retroactively explained months of
+   fruitless search at $n = 32 \dots 52$ and that no amount of tuning could have overcome.
+   A literature search costs minutes; a mis-aimed campaign costs days.
+7. **Prefer the open published gap over the headline problem.** A scale function usually has a
+   gap in it that is a real, citable, and far easier target than the conjecture itself — here,
+   any cubic graph on 54–77 vertices with no $C_4$, $C_8$ or $C_{16}$ improves $f(4)$, and
+   32-cycles are *allowed*. Make the objective configurable so the easier target is one flag
+   away (`--max-length 16` versus `32`), and never let a hit on the easier target be reported
+   as a solution to the harder one.
+8. **Replace a falsified claim, do not annotate it.** When a published number turns out to be
    a bug, delete it and put the measured value in its place. Keep the account of what went
    wrong in the commit message, where it stays available without becoming part of the project
    guide — a reader wants the current state of the work, not a history of its corrections.
    The one thing that must survive into the docs is any consequence still in force: a
    component that is trusted rather than verified, or a bound that no longer holds.
-8. **Every number in a write-up must come from a command you ran or a source you can cite.**
+9. **Every number in a write-up must come from a command you ran or a source you can cite.**
    If neither applies, leave it out. "Over 7.5 billion moves computed" and "51 million swaps in
    ~750 ms" are the shape of claims that get generated rather than measured.

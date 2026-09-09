@@ -28,14 +28,52 @@ constitutes a proof.
     misstated it as "no cubic counterexample exists on $n \le 30$".)
   - Nowbandegani and Esfandiari [NoEs11] showed that a **bipartite counterexample must have at
     least 32 vertices**.
-  - Forum user `sallerk` (31 Aug 2026) reports an exhaustive search over **cubic bipartite**
-    graphs for every even $n$ from 4 to 62 with no survivor — in that whole range no graph
-    even avoided $C_4$, $C_8$ and $C_{16}$ simultaneously, so the $C_{32}$ test was never
-    reached. The same author reports that their general (non-bipartite) cubic search reached
-    only $n \le 34$. Code: <https://github.com/sallerk/erdos-notes/tree/main/p64>
-  - **Therefore the open corridor for general cubic graphs starts at $n = 36$.** The default
-    orders of `campaign_solver.py` and `engine/loongflow_main.py` begin there, and both warn
-    when asked for $n \le 34$.
+  - Garcia (Sept 2026, [arXiv:2609.04686](https://arxiv.org/abs/2609.04686)) proved by
+    SAT-based exhaustive search with DRAT certificates that every graph of minimum degree
+    $\ge 3$ on at most 23 vertices contains a $C_4$ or a $C_8$, so **any counterexample has at
+    least 24 vertices** (the previously published bound was 16), and the smallest
+    minimum-degree-3 graph with neither a $C_4$ nor a $C_8$ has exactly 24 vertices.
+  - Tranquilli ([arXiv:2608.02675](https://arxiv.org/abs/2608.02675)) covered cubic bipartite
+    graphs on $n \le 58$, giving a **60-vertex lower bound for that class**.
+  - Forum user `sallerk` (31 Aug 2026) reports extending the cubic bipartite sweep to
+    $n \le 62$, and reports that their general (non-bipartite) cubic search reached only
+    $n \le 34$. Both are unpublished. Code:
+    <https://github.com/sallerk/erdos-notes/tree/main/p64>
+
+### The $f(k)$ scale, and where a counterexample can actually live
+
+The literature tracks this problem through
+
+$$f(k) = \text{order of the smallest cubic graph with no cycle of length } 2^m \text{ for any } m \le k.$$
+
+| | value | status |
+| :--- | :--- | :--- |
+| $f(2)$ (avoid $C_4$) | $10$ | exact — the Petersen graph (Exoo) |
+| $f(3)$ (avoid $C_4, C_8$) | $24$ | exact — Markström |
+| $f(4)$ (avoid $C_4, C_8, C_{16}$) | $54 \le f(4) \le 78$ | **open gap.** Lower bound an unpublished Markström computation; upper bound Exoo's 78-vertex graph |
+| $f(5)$ (avoid $C_4 \dots C_{32}$) | $\le 450$ | Garcia, correcting Exoo. No published lower bound |
+| $f(6)$ | $\le 32640$ | Garcia — the first bound for $f(6)$ |
+
+Two consequences that govern every search in this repository:
+
+1. **A cubic counterexample needs at least 54 vertices.** Any counterexample on $n \ge 16$
+   vertices is in particular $\{C_4, C_8, C_{16}\}$-free, and $f(4) \ge 54$ says no cubic graph
+   below 54 vertices is. So the orders $n = 32 \dots 52$ are not a hard frontier — they are
+   **provably empty** for this target. The candidates recorded in section 5 at those orders
+   could never have succeeded, whatever the search quality. They are kept as verifier
+   fixtures, nothing more.
+2. **Closing $f(4) \in [54, 78]$ is the one open target this tooling fits.** A cubic graph on
+   54–77 vertices with no $C_4$, $C_8$ or $C_{16}$ would improve Exoo's bound. Note the target
+   is $\{4, 8, 16\}$-free — **not** counterexample-free: $C_{32}$ is explicitly allowed, which
+   makes it strictly easier than the conjecture. Garcia shows 78 is optimal among gadget
+   designs on bases of $\le 12$ vertices, which constrains that construction route but says
+   nothing about the 54–77 window, and nobody has searched it exhaustively.
+
+   Caveat on this repository's reach: `verifier/` is a 64-vertex bitmask engine, so it covers
+   only $54 \le n \le 64$ of that window. Widening it to 128 vertices would open the rest and
+   would also let Exoo's 78-vertex graph be re-verified independently — worth doing, given
+   that Garcia has just found a genuine error (spurious 8- and 32-cycles) in the sibling
+   $f(5)$ construction.
 - **Families where the conjecture is confirmed** (so no construction inside them can work):
   3-connected cubic planar graphs (Heckman–Krakovski), graphs of diameter 2 (Carr), $P_8$-free
   graphs (Gao–Shan), $P_{10}$-free graphs (Hu–Shen), claw-free cubic graphs below 114
@@ -48,6 +86,15 @@ counterexample: the vertices of degree $\ge 4$ form an independent set, every ve
 cubic neighbour, and at least $2/3$ of the vertices are cubic. That does **not** prove a
 minimal counterexample is cubic, so it does not license the restriction — it only makes it
 plausible.
+
+The published bound in this line is Carr's $4/7$
+([arXiv:2605.22844](https://arxiv.org/abs/2605.22844), "Every Minimal Counterexample to the
+Erdős–Gyárfás Conjecture is Predominantly Cubic"). Bisch's $\ge 2/3$ improvement is on Zenodo
+with a Lean 4 formalization but is not published, and a forum argument by `jul059`
+(26 Jul 2026) strengthens it to a strict $> 2/3$ via $|V_3| \ge 2|V_{\ge 4}| + 1$ — posted as
+unverified and, as of this writing, neither published nor formalized. Formalizing that
+equality-case argument on top of Bisch's existing Lean scaffold is a small, self-contained
+contribution that is still available.
 
 A second forum claim, Guillem Duran-Ballester's 250-page argument, is incomplete: a reviewer
 produced an arithmetic counterexample to its Lemma 7.37(a), the author conceded, and the
@@ -220,6 +267,43 @@ uv run python tools/recount_candidates.py --cap 100000
 it.** Every count comes from `verifier_64 --full`, which tests every power-of-two length
 $\le n$. A count printed as `N+` means the counter hit its cap, so `N` is only a lower bound.
 `n/a` means the length exceeds $n$.
+
+Read these rows as verifier fixtures, not as near misses. By $f(4) \ge 54$ (section 1) no
+cubic graph below 54 vertices avoids $\{C_4, C_8, C_{16}\}$, so every row up to $n = 52$ was
+searching a provably empty set. The rows at $n \ge 54$ sit inside the open $f(4)$ window, but
+they were produced by a search aimed at the harder counterexample target (which also forbids
+$C_{32}$) rather than at $\{4, 8, 16\}$-freeness.
+
+### The $f(4)$ attempt
+
+`tools/f4_sweep.py` runs the swarm with `--max-length 16`, so the objective scores only
+$\{C_4, C_8, C_{16}\}$ and 32-cycles are allowed. Best verified profile per order after two
+rounds of 8000 steps × 10240 threads (candidates in `cuda/f4_best_n*.json`):
+
+| Order $n$ | $C_4$ | $C_8$ | $C_{16}$ | mis-aimed candidate, for comparison |
+| :---: | :---: | :---: | :---: | :---: |
+| 54 | 0 | 0 | 107 | 1307 |
+| 56 | 0 | 0 | 222 | 1270 |
+| **58** | 0 | 0 | **60** | — |
+| 60 | 0 | 0 | 1323 | 1360 |
+| 62 | 0 | 0 | 1270 | — |
+
+**No $\{4, 8, 16\}$-free graph was found, so $f(4) \le 78$ stands.** Nothing follows from the
+failure: this is a heuristic search, not an exhaustive one, and the region may simply be empty
+— $f(4) \ge 54$ is only a lower bound, and if the true value is near 78 then no graph exists
+at these orders to find.
+
+Two observations that are worth recording anyway. Retargeting alone bought roughly a factor of
+20 at $n = 58$ (1307 → 60), which is the difference between scoring the right objective and
+the wrong one. And the seeding strategy is a trap: rounds after the first perturb the saved
+candidate only locally, so $n = 60$ and $n = 62$ inherited a poor first round and never
+recovered, while $n = 58$ went 201 → 60. A restart policy that keeps a population per order,
+rather than a single best, would fix that.
+
+For context on how far 60 is from 0: a random cubic graph on 60 vertices has about 1300
+16-cycles (measured), against a theoretical $2^{16}/32 = 2048$ for large $n$. Reaching 60 is a
+20-fold suppression below random; reaching 0 is a different kind of problem, and the published
+record at 78 vertices was set by an algebraic construction, not by local search.
 
 | Order $n$ | $\lvert E \rvert$ | Regularity | Connected | Girth | Diam | $C_4$ | $C_8$ | $C_{16}$ | $C_{32}$ | $C_{64}$ | Counterexample | Candidate File |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
