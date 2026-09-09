@@ -31,7 +31,7 @@ $m \le k$.
 `formalization-egc/` proves, with no `sorry` and no hypotheses beyond `MinCexHyps`
 (the Carr/Bisch facts about a minimal counterexample):
 
-$$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad	ext{hence}\qquad 3|V_3| > 2|V|.$$
+$$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad\text{hence}\qquad 3|V_3| > 2|V|.$$
 
 Published state for comparison: Carr's $4/7$
 ([arXiv:2605.22844](https://arxiv.org/abs/2605.22844)) is the literature bound; Bisch's
@@ -70,6 +70,45 @@ with the lemma of his that supplies it. The two developments compose.
 **What would finish this as a contribution:** discharge `MinCexHyps` from Bisch's Lean
 file (or reprove those four facts here) to get an unconditional theorem about minimal
 counterexamples, then write it up. The mathematical content is done.
+
+### 1b. Beating 2/3 unconditionally — **attempted, blocked**
+
+Recorded so nobody repeats it. `formalization-egc/EGCDensity.lean` proves the
+reformulation that governs this whole family of bounds:
+
+$$4|V_4| + S_3 \le 3|V_3|, \qquad S_3 = \sum_{v \in V_3} \#\{\text{cubic neighbours of } v\},$$
+
+so $S_3$ (twice the number of edges *inside* $V_3$) decides the constant. Carr's
+domination lemma gives $S_3 \ge |V_3|$, which is exactly Bisch's $2/3$ — meaning **$2/3$
+is precisely the bound you get when $G[V_3]$ is a perfect matching**, and a $K_2$
+component of $G[V_3]$ is the unique configuration that attains it.
+
+Proved here: if $G[V_3]$ has **no** $K_2$ component then $3S_3 \ge 4|V_3|$ and hence
+$$12|V| \le 17|V_3|, \qquad |V_3| \ge \tfrac{12}{17}|V| \approx 0.7059\,|V|.$$
+(`twelve_seventeenths_of_noK2`, a fibre count — no connectivity argument needed.)
+
+Removing that hypothesis would give $12/17$ outright. Two obstacles, both checked:
+
+1. **Every local replacement shifts cycle lengths by $\pm 1$ or $\pm 2$.** Bisch's
+   Proposition 4 pins the configuration down tightly (an adjacent cubic pair with all
+   other neighbours in $V_4$ has a unique common neighbour, of degree exactly 4, forming a
+   triangle), but each way of removing the pair — delete the pair and join its $V_4$
+   neighbours; delete pair and apex and join the apex's other neighbours; contract the
+   triangle; delete the apex and rewire — sends a $2^k$ cycle in the smaller graph to a
+   cycle of length $2^k+1$ or $2^k+2$ in $G$. Not a power of two, so minimality gives no
+   contradiction. `jul059`'s argument escapes this only because in the perfect-matching
+   case the operation is *uniformly multiplicative* ($G$ is a subdivision, every cycle
+   doubles, $2^k \mapsto 2^{k+1}$); one $V_3$–$V_3$ edge destroys that uniformity.
+2. **Counting alone cannot beat 2/3.** The extremal configuration — $G[V_3]$ a perfect
+   matching, each degree-4 apex serving two $K_2$ components, the remaining $V_4$ vertices
+   of degree 4 absorbing edges from four distinct components — is consistent with every
+   known constraint ($V_4$ independent, every vertex has a cubic neighbour, Proposition 4's
+   uniqueness, no $C_4$) and closes the count at exactly $|V_4| = |V_3|/2$. So any
+   improvement must invoke the cycle condition, which is what obstacle 1 blocks.
+
+What would break the deadlock is an operation on the $K_2$ configuration that scales all
+cycle lengths multiplicatively, or a genuinely new structural lemma about apexes. Neither
+is in reach of the current toolkit.
 
 ### 2. Close $f(4) \in [54, 78]$ — the live computational gap
 

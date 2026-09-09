@@ -153,6 +153,9 @@ erdos-64/
 └── formalization-egc/            # Lean 4 + Mathlib — the strict 2/3 bound, proved
     ├── EGCStrict.lean            # Counting and the equality analysis
     ├── EGCLift.lean              # Cycle lifting and the final bound
+    ├── EGCDensity.lean           # The reformulation; conditional 12/17 bound
+    ├── EGCBridge.lean            # Bisch's IsMinCex supplies the hypotheses
+    │                             #   (needs EGC.lean fetched by hand; gitignored)
     └── AxiomCheck.lean           # `#print axioms` audit of every theorem
 ```
 
@@ -367,7 +370,7 @@ reimplementation of the counter.
 A second, separate Lake project (this one *does* depend on Mathlib) proves a real theorem
 about minimal counterexamples rather than checking a candidate graph:
 
-$$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad 	ext{hence} \qquad 3|V_3| > 2|V|,$$
+$$|V_3| \ge 2|V_{\ge 4}| + 1, \qquad \text{hence} \qquad 3|V_3| > 2|V|,$$
 
 i.e. strictly more than two thirds of the vertices of a minimal counterexample are cubic.
 Carr's published bound is $4/7$; Bisch's $\ge 2/3$ is unpublished; the strict version was
@@ -384,7 +387,28 @@ vertices are distinct because, in the equality case, a cubic vertex determines t
 contraction edge it came from.
 
 `EGCStrict.lean` has the counting and the equality analysis, `EGCLift.lean` the lifting and
-the final bound. **No `sorry`**, and every theorem audits to `propext`,
+the final bound, and `EGCBridge.lean` derives the hypotheses from Bisch's `IsMinCex` so the
+statement is unconditional.
+
+`EGCDensity.lean` goes further and isolates *what controls the constant* in this whole
+family of bounds. Counting the $V_3$–$V_4$ edges from both ends gives
+
+$$4|V_4| + S_3 \le 3|V_3|, \qquad S_3 = \sum_{v \in V_3} \#\{\text{cubic neighbours of } v\},$$
+
+so the constant is decided by $S_3$, i.e. by twice the number of edges *inside* $V_3$.
+Carr's domination lemma gives $S_3 \ge |V_3|$, which reproduces Bisch's $2/3$ exactly —
+so **$2/3$ is precisely the bound obtained when $G[V_3]$ is a perfect matching**, and a
+$K_2$ component of $G[V_3]$ is the unique configuration attaining it. Assuming those away
+yields a strictly better bound:
+
+$$\text{no } K_2 \text{ component in } G[V_3] \;\Longrightarrow\; |V_3| \ge \tfrac{12}{17}|V| \approx 0.7059\,|V|.$$
+
+That hypothesis is **not** removed, and section 1b of [ROADMAP.md](ROADMAP.md) records why
+the obvious attacks fail: every local replacement that destroys a $K_2$ component shifts
+cycle lengths by $\pm 1$ or $\pm 2$, so a $2^k$ cycle in the smaller graph lifts to
+$2^k + 1$ or $2^k + 2$ and minimality yields nothing. It also records that the extremal
+configuration is consistent with every known constraint, so no purely counting argument
+built on these lemmas can beat $2/3$. **No `sorry`**, and every theorem audits to `propext`,
 `Classical.choice`, `Quot.sound` only — run `lake env lean AxiomCheck.lean` to see it.
 
 What it assumes: the four Carr/Bisch facts about a minimal counterexample, bundled as

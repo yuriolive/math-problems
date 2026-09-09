@@ -2,7 +2,7 @@ name = "EGCStrict"
 version = "0.1.0"
 # EGCBridge is deliberately NOT a default target: it needs vendor/EGC.lean, which is a
 # separate unlicensed work and is not redistributed here. See EGCBridge.lean.
-defaultTargets = ["EGCStrict", "EGCLift"]
+defaultTargets = ["EGCStrict", "EGCLift", "EGCDensity"]
 
 [[require]]
 name = "mathlib"
@@ -13,6 +13,9 @@ name = "EGCStrict"
 
 [[lean_lib]]
 name = "EGCLift"
+
+[[lean_lib]]
+name = "EGCDensity"
 
 [[lean_lib]]
 name = "EGCBridge"
