@@ -171,39 +171,72 @@ class Cell:
 
 
 def solve_cell(n: int, k: int, budget: int) -> Cell:
-    """Climb s until unsatisfiable. Runs in a worker process; returns a plain Cell."""
+    """Find the maximum admissible size. Runs in a worker process; returns a plain Cell.
+
+    Doubling to bracket, then binary search. Climbing by one costs a solver call per set
+    and the maxima here run to the dozens; bracketing costs a logarithmic number instead.
+    Every satisfiable point is re-verified by the compiled checker before it is believed,
+    and an exhausted budget collapses the search to a lower bound rather than an answer.
+    """
     sets, triples = load_instance(n, k)
     cell = Cell(n=n, k=k, num_sets=len(sets), num_triples=len(triples))
+    num = len(sets)
 
-    s = 1
-    while True:
+    def try_size(s: int) -> tuple[str, list[int] | None]:
         status, model = decide(sets, triples, s, budget)
+        if status != "sat":
+            return status, None
+        checked = verify_with_checker(n, model)
+        if not checked.get("admissible"):
+            raise RuntimeError(
+                f"CHECKER REJECTED a model CaDiCaL called sat at n={n} k={k} s={s}: "
+                f"{checked}. This is a bug, not a result."
+            )
+        if checked["size"] < s:
+            raise RuntimeError(
+                f"model at n={n} k={k} has {checked['size']} sets, asked for >= {s}"
+            )
+        if checked["k"] != k and checked["size"] > 0:
+            raise RuntimeError(f"model at n={n} k={k} has k={checked['k']}")
+        return "sat", model
 
+    # Bracket: double until a size fails, keeping the last verified success.
+    lo = 0                      # known achievable
+    hi: int | None = None       # known impossible
+    probe = 1
+    while probe <= num:
+        status, model = try_size(probe)
         if status == "sat":
-            checked = verify_with_checker(n, model)
-            if not checked.get("admissible"):
-                raise RuntimeError(
-                    f"CHECKER REJECTED a model CaDiCaL called sat at n={n} k={k} s={s}: "
-                    f"{checked}. This is a bug, not a result."
-                )
-            if checked["size"] < s:
-                raise RuntimeError(
-                    f"model at n={n} k={k} has {checked['size']} sets, asked for >= {s}"
-                )
-            if checked["k"] != k:
-                raise RuntimeError(f"model at n={n} k={k} has k={checked['k']}")
-            cell.best = checked["size"]
-            cell.best_family = model
-            s = checked["size"] + 1
-            continue
+            lo = len(model)     # the model may exceed the request; take what it gives
+            cell.best, cell.best_family = lo, model
+            probe = lo + 1 if lo >= probe else probe + 1
+            probe = max(probe, lo * 2)
+        elif status == "unsat":
+            hi = probe
+            break
+        else:
+            cell.status = "lower-bound-only"
+            cell.note = f"budget exhausted while bracketing at s={probe}"
+            return cell
+    if hi is None:
+        hi = num + 1
 
-        if status == "unsat":
-            cell.status = "exact"
+    # Binary search the boundary in (lo, hi).
+    while lo + 1 < hi:
+        mid = (lo + hi) // 2
+        status, model = try_size(mid)
+        if status == "sat":
+            lo = max(lo, len(model))
+            cell.best, cell.best_family = lo, model
+        elif status == "unsat":
+            hi = mid
+        else:
+            cell.status = "lower-bound-only"
+            cell.note = f"budget exhausted at s={mid}; maximum lies in [{lo}, {hi - 1}]"
             return cell
 
-        cell.status = "lower-bound-only"
-        cell.note = f"budget {budget} conflicts exhausted at s={s}"
-        return cell
+    cell.status = "exact"
+    return cell
 
 
 def brute_max(n: int, k: int) -> int:
@@ -253,6 +286,7 @@ def main(argv: list[str]) -> int:
               f"budget {args.budget or 'unlimited'} conflicts/decision", flush=True)
 
     cells: list[Cell] = []
+    failures: list[tuple[int, int, str]] = []
     with ProcessPoolExecutor(max_workers=jobs) as pool:
         futures = {
             pool.submit(solve_cell, n, k, args.budget): (n, k)
@@ -260,7 +294,16 @@ def main(argv: list[str]) -> int:
         }
         for fut in as_completed(futures):
             n, k = futures[fut]
-            cell = fut.result()  # a checker rejection raises here, which is intended
+            try:
+                cell = fut.result()
+            except Exception as e:  # noqa: BLE001 - one bad cell must not lose the rest
+                # A checker rejection is a bug and must be loud; a dead worker is an
+                # infrastructure failure. Either way the cell has no value, and saying so
+                # beats discarding every other cell's work.
+                print(f"  n={n} k={k}: FAILED ({type(e).__name__}: "
+                      f"{str(e)[:160]})", flush=True)
+                failures.append((n, k, f"{type(e).__name__}: {e}"))
+                continue
             cells.append(cell)
             if verbose:
                 print(f"  n={cell.n} k={cell.k}: Munif = {cell.label}  "
@@ -287,6 +330,12 @@ def main(argv: list[str]) -> int:
     for c in sorted(cells, key=lambda c: (c.n, c.k)):
         print(f"{c.n:>3} {c.k:>3} {c.num_sets:>8} {c.num_triples:>9} "
               f"{c.label:>7} {c.ratio:>9.6f}  {c.status}")
+
+    if failures:
+        print()
+        print(f"{len(failures)} cell(s) produced no result and are NOT in the table:")
+        for n, k, msg in failures:
+            print(f"  n={n} k={k}: {msg[:140]}")
 
     print()
     best = max((c for c in cells if c.best), key=lambda c: c.ratio, default=None)
