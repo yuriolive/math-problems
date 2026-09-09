@@ -1,4 +1,4 @@
-# math-problems
+# proofstack
 
 A working stack for attacking open problems in mathematics: search for counterexamples,
 check every candidate with compiled code, and formalize whatever turns out to be provable.
