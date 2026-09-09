@@ -24,15 +24,9 @@
     "cycle_len": 8
   },
   {
-    "family": "Exploration",
-    "failure_mode": "Cycle Collision",
-    "lesson": "Girth 0 reached, but cycle collision occurred on path []...",
-    "cycle_len": 0
-  },
-  {
     "family": "Multi-Ring Odd-Factor Lift (MROFL)",
-    "failure_mode": "2-chord cycle closure via complementary ring arc traversal and modular resonance where gcd(a \u00c2\u00b1 1, \u00e2\u201e\u201c) > 1",
-    "lesson": "Cycle avoidance proofs on ring factors must evaluate full circular traversals including complementary long arcs (\u00e2\u201e\u201c - d), while enforcing gcd(a \u00c2\u00b1 1, \u00e2\u201e\u201c) = 1 on affine multipliers to eliminate fixed-difference harmonic closures.",
+    "failure_mode": "2-chord cycle closure via complementary ring arc traversal and modular resonance where gcd(a Â± 1, â„“) > 1",
+    "lesson": "Cycle avoidance proofs on ring factors must evaluate full circular traversals including complementary long arcs (â„“ - d), while enforcing gcd(a Â± 1, â„“) = 1 on affine multipliers to eliminate fixed-difference harmonic closures.",
     "cycle_len": 8
   },
   {
@@ -50,13 +44,13 @@
   {
     "family": "General Counterexample Structure (Bisch Theorem 3 & Lemma 2)",
     "failure_mode": "High-degree vertex adjacency and low cubic density",
-    "lesson": "By Bisch's formally verified Lean 4 theorem, every minimal counterexample satisfies |V3| >= (2/3)|V| and all vertices of degree >= 4 form an independent set (never adjacent). Any search over non-cubic graphs must enforce that degree >= 4 vertices are only adjacent to cubic vertices.",
+    "lesson": "By Bisch's formally verified Lean 4 theorems, every minimal counterexample satisfies |V3| >= (2/3)|V|, vertices of degree >= 4 form an independent set, and every vertex has a neighbour of degree exactly 3. Any search over non-cubic graphs must enforce that degree >= 4 vertices are adjacent only to cubic vertices. Note the bound does NOT prove a minimal counterexample is cubic, so restricting to cubic graphs is a heuristic, not a consequence.",
     "cycle_len": 0
   },
   {
     "family": "Asymmetric Coprime-Orbit Bipartite Graph (ACOB-Graph)",
     "failure_mode": "Fixed-point matching collision between identity matching and affine matching creating duplicate edges",
-    "lesson": "Affine permutations \u00cf\u20ac(x) = ax + b mod m with gcd(a - 1, m) = 1 always possess a fixed point where \u00cf\u20ac(x) = x, causing collisions with the identity matching \u00cf\u20ac_1(x) = x; ensure (a - 1)x + b \u00e2\u2030\u00a2 0 (mod m) for all domain elements to prevent multi-edges and preserve strict 3-regularity.",
+    "lesson": "Affine permutations Ï€(x) = ax + b mod m with gcd(a - 1, m) = 1 always possess a fixed point where Ï€(x) = x, causing collisions with the identity matching Ï€_1(x) = x; ensure (a - 1)x + b â‰¢ 0 (mod m) for all domain elements to prevent multi-edges and preserve strict 3-regularity.",
     "cycle_len": 0
   },
   {
@@ -72,9 +66,15 @@
     "cycle_len": 0
   },
   {
-    "family": "Exploration",
-    "failure_mode": "Cycle Collision",
-    "lesson": "Girth 0 reached, but cycle collision occurred on path []...",
+    "family": "Search frontier (exhaustive results)",
+    "failure_mode": "Re-searching orders already excluded in the literature",
+    "lesson": "Markstroem (2004) puts a cubic counterexample at n >= 30, and later exhaustive search covers all general cubic graphs to n = 34 and all cubic bipartite graphs to n = 62 with no survivor. Constructions targeting n <= 34 cannot succeed; the open corridor starts at n = 36.",
+    "cycle_len": 0
+  },
+  {
+    "family": "Minimum degree (Liu-Montgomery 2020)",
+    "failure_mode": "Searching graphs of large minimum degree",
+    "lesson": "Liu and Montgomery proved the conjecture true whenever the minimum degree exceeds an absolute constant, which also disproved the stronger Erdos-Gyarfas conjecture. A counterexample can only have very small minimum degree, so degree 3 is the only viable target.",
     "cycle_len": 0
   }
 ]

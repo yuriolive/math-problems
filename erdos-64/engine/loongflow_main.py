@@ -1,11 +1,13 @@
-"""
-LoongFlow PES Orchestrator for Erdős Problem #64.
-Executes the Cognitive Loop (Plan -> Execute -> Summarize) to discover counterexamples.
-Zero external API keys required (powered by local `agy -p`).
+"""PES orchestrator for Erdős Problem #64: Plan -> Execute -> Summarize.
+
+The PES pattern (Plan, Execute, Summary) is borrowed from Baidu's LoongFlow agent
+framework. LoongFlow itself is NOT a dependency of this project: the loop below is a
+local reimplementation of the pattern that drives the `agy` CLI directly.
 """
 
 import argparse
 import logging
+import random
 import sys
 import time
 from pathlib import Path
@@ -18,156 +20,187 @@ if sys.platform == "win32":
         pass
 
 try:
+    from .agy_client import AgyError
     from .pes_memory import EvolutionaryMemory
     from .planner import generate_plan
     from .executor import execute_plan
     from .summarizer import summarize_and_reflect
-    from .baseline_graphs import get_seed_generators
-    from .evaluator import evaluate_graph_code
-except ImportError:
-    from pes_memory import EvolutionaryMemory
-    from planner import generate_plan
-    from executor import execute_plan
-    from summarizer import summarize_and_reflect
-    from baseline_graphs import get_seed_generators
-    from evaluator import evaluate_graph_code
+    from .seeding import seed_archive_from_candidates, seed_archive_from_generators
+except ImportError:  # direct script execution
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from engine.agy_client import AgyError
+    from engine.pes_memory import EvolutionaryMemory
+    from engine.planner import generate_plan
+    from engine.executor import execute_plan
+    from engine.summarizer import summarize_and_reflect
+    from engine.seeding import seed_archive_from_candidates, seed_archive_from_generators
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("LoongFlow")
+logger = logging.getLogger("PES")
 
-def run_loongflow(
+# Exhaustive search has already settled all general cubic graphs up to n = 34, so the
+# default targets start at the open frontier.
+DEFAULT_TEST_NS = [36, 38, 40]
+
+
+def select_parent(memory: EvolutionaryMemory, rng: random.Random, tournament: int = 3):
+    """Tournament selection over the archive.
+
+    Deterministically taking the top elite (the previous behaviour) meant every cycle
+    re-planned from the same parent and the loop could not explore.
+    """
+    elites = memory.map_elites.get_elites()
+    if not elites:
+        return None
+    k = min(tournament, len(elites))
+    contenders = rng.sample(elites, k)
+    return max(contenders, key=lambda p: (1 if p.is_counterexample else 0, p.fitness))
+
+
+def run_pes(
     iterations: int = 10,
-    test_ns: list[int] = [32, 34, 36],
+    test_ns: list[int] | None = None,
     timeout_sec: float = 60.0,
+    seed: int | None = None,
+    count_cap: int = 1000,
 ):
+    test_ns = test_ns or list(DEFAULT_TEST_NS)
+    rng = random.Random(seed)
+
     print("=" * 70)
-    print("🚀 LOONGFLOW COGNITIVE PES ENGINE (Erdős Problem #64)")
-    print(f"Target Vertices: {test_ns} | Total PES Cycles: {iterations}")
+    print("PES COGNITIVE LOOP (Erdos Problem #64)")
+    print(f"Target orders: {test_ns} | Cycles: {iterations}")
     print("=" * 70)
 
     memory = EvolutionaryMemory()
+    root = Path(__file__).resolve().parent.parent
 
-    # 1. Seed the MAP-Elites archive with foundational graph families
-    print("\n[Phase 0] Seeding MAP-Elites archive with foundational graph families...")
-    seeds = get_seed_generators()
-    for name, code in seeds.items():
-        prog = evaluate_graph_code(code, program_id=f"seed_{name}", test_ns=test_ns)
-        is_new = memory.map_elites.add(prog, prog.girth, prog.diameter, prog.bipartite)
-        status = "✨ NEW NICHE" if is_new else "Existing"
-        print(f"  • Seed '{name}': Fitness={prog.fitness:.1f}, Girth={prog.girth}, Diam={prog.diameter}, BP={prog.bipartite} [{status}]")
-
-    # Load GPU Swarm elite candidate if available
-    swarm_seed_path = Path(__file__).resolve().parent.parent / "cuda" / "best_swarm_graph.json"
-    if swarm_seed_path.is_file():
-        try:
-            import json
-            with open(swarm_seed_path, "r", encoding="utf-8") as f:
-                swarm_data = json.load(f)
-            adj = swarm_data.get("adj", [])
-            code = f'''def generate_graph(n: int) -> dict:
-    adj = {adj}
-    if n == {len(adj)}:
-        return {{"n": {len(adj)}, "adj": adj}}
-    res = [[] for _ in range(n)]
-    for i in range(n):
-        res[i].extend([(i + 1) % n, (i - 1 + n) % n, (i + n // 2) % n])
-    return {{"n": n, "adj": res}}
-'''
-            prog = evaluate_graph_code(code, program_id="gpu_swarm_elite_32", test_ns=test_ns)
-            is_new = memory.map_elites.add(prog, prog.girth, prog.diameter, prog.bipartite)
-            status = "✨ NEW NICHE" if is_new else "Existing"
-            print(f"  • Seed 'gpu_swarm_elite_32': Fitness={prog.fitness:.1f}, Girth={prog.girth}, Diam={prog.diameter}, BP={prog.bipartite} [{status}]")
-        except Exception as e:
-            logger.warning("Could not load GPU swarm seed: %s", e)
-
-    print(f"\nArchive populated with {memory.map_elites.coverage()} initial behavioral niches.")
+    print("\n[Phase 0] Seeding the MAP-Elites archive...")
+    n_gen = seed_archive_from_generators(memory, test_ns, count_cap=count_cap)
+    n_cand = seed_archive_from_candidates(memory, root / "cuda", count_cap=count_cap)
+    print(f"  baseline families: {n_gen} niches | saved candidates: {n_cand} niches")
+    print(f"Archive holds {memory.map_elites.coverage()} behavioural niches.")
     print(memory.get_recent_lessons(k=3))
     print("-" * 70)
 
-    # 2. Main PES Cognitive Cycle
     for cycle in range(1, iterations + 1):
-        print(f"\n🔄 === [CYCLE {cycle}/{iterations}] LoongFlow PES Loop ===")
+        print(f"\n=== [CYCLE {cycle}/{iterations}] ===")
 
-        # Selection: Pick an elite with high fitness or high girth
-        elites = memory.map_elites.get_elites()
-        if not elites:
-            print("No elites available in archive.")
+        parent = select_parent(memory, rng)
+        if parent is None:
+            print("Archive is empty; nothing to evolve from.")
             break
+        print(
+            f"Parent: {parent.id} (fitness {parent.fitness:.1f}, girth {parent.girth}, "
+            f"2^k cycles {parent.pow2_cycle_total})"
+        )
 
-        # Bias toward elites with higher girth or higher fitness
-        elites.sort(key=lambda p: (p.girth, p.fitness), reverse=True)
-        parent = elites[0]
-        print(f"🎯 Selected Parent: {parent.id} (Fitness: {parent.fitness:.1f}, Girth: {parent.girth}, Diam: {parent.diameter})")
-
-        # ----------------- 1. PLAN -----------------
+        # ---- 1. PLAN ----
         t0 = time.time()
-        print("\n🧠 [Step 1: PLAN] Formulating strategic mathematical blueprint...")
+        print("\n[1: PLAN] Formulating a blueprint...")
         try:
             blueprint = generate_plan(parent, memory, target_n=test_ns[0], timeout_sec=timeout_sec)
-            plan_duration = time.time() - t0
-            print(f"✅ Blueprint generated in {plan_duration:.1f}s:")
-            for line in blueprint.splitlines()[:8]:
-                print(f"   │ {line}")
-            if len(blueprint.splitlines()) > 8:
-                print("   │ ...")
+        except AgyError as e:
+            logger.error("Planner unavailable: %s", e)
+            break
         except Exception as e:
             logger.error("Planner step failed: %s", e)
             continue
+        print(f"Blueprint in {time.time() - t0:.1f}s:")
+        for line in blueprint.splitlines()[:8]:
+            print(f"   | {line}")
+        if len(blueprint.splitlines()) > 8:
+            print("   | ...")
 
-        # ----------------- 2. EXECUTE -----------------
+        # ---- 2. EXECUTE ----
         t1 = time.time()
-        print("\n⚙️  [Step 2: EXECUTE] Synthesizing generator code & verifying in Rust...")
+        print("\n[2: EXECUTE] Synthesizing and verifying...")
         try:
-            child, code = execute_plan(blueprint, parent, test_ns=test_ns, timeout_sec=timeout_sec)
-            exec_duration = time.time() - t1
-            print(f"✅ Executed & Verified in {exec_duration:.1f}s:")
-            print(f"   │ Child Fitness: {child.fitness:.1f} (Cubic: {child.all_cubic}, Girth: {child.girth}, Diam: {child.diameter})")
-            print(f"   │ Trace: {child.diagnostic_trace}")
-            if child.cycle_witness:
-                print(f"   │ Cycle Witness: {child.cycle_witness}")
+            child, code = execute_plan(
+                blueprint, parent, test_ns=test_ns, timeout_sec=timeout_sec, count_cap=count_cap
+            )
+        except AgyError as e:
+            logger.error("Executor unavailable: %s", e)
+            break
         except Exception as e:
             logger.error("Executor step failed: %s", e)
             continue
+        print(f"Verified in {time.time() - t1:.1f}s:")
+        print(
+            f"   | fitness {child.fitness:.1f} | cubic {child.all_cubic} | "
+            f"connected {child.connected} | girth {child.girth}"
+        )
+        print(f"   | {child.diagnostic_trace}")
 
-        # Check for immediate counterexample discovery
         if child.is_counterexample:
-            print("\n" + "🎉" * 35)
-            print("🏆 UNPRECEDENTED MATHEMATICAL DISCOVERY! ERDŐS #64 COUNTEREXAMPLE FOUND!")
-            print("🎉" * 35)
-            print(f"\nWinning Program Code:\n{code}")
+            out = root / "cuda" / f"CANDIDATE_COUNTEREXAMPLE_n{test_ns[0]}.py"
+            out.write_text(code, encoding="utf-8")
+            print("\n" + "=" * 70)
+            print("The verifier reports NO power-of-two cycle and min degree >= 3.")
+            print(f"Generator written to {out}")
+            print("Before claiming anything: re-verify with an independent tool, check")
+            print("connectivity, and confirm every power-of-two length <= n was tested.")
+            print("=" * 70)
             break
 
-        # ----------------- 3. SUMMARIZE -----------------
+        # ---- 3. SUMMARIZE ----
         t2 = time.time()
-        print("\n🔬 [Step 3: SUMMARIZE] Abductive reflection & updating Evolutionary Memory...")
+        print("\n[3: SUMMARIZE] Reflecting into memory...")
         try:
             summary_res = summarize_and_reflect(blueprint, child, memory, timeout_sec=timeout_sec)
-            sum_duration = time.time() - t2
-            niche_tag = "🌟 NEW MAP-ELITES NICHE CLAIMED!" if summary_res.get("is_elite") else "Existing niche"
-            print(f"✅ Reflected in {sum_duration:.1f}s [{niche_tag}]:")
-            print(f"   │ Distilled Lesson: {summary_res.get('lesson')}")
+            tag = "new niche" if summary_res.get("is_elite") else "existing niche"
+            print(f"Reflected in {time.time() - t2:.1f}s [{tag}]:")
+            lesson = summary_res.get("lesson")
+            print(f"   | lesson: {lesson}" if lesson else "   | no transferable lesson recorded")
+        except AgyError as e:
+            logger.warning("Summarizer unavailable: %s", e)
         except Exception as e:
             logger.error("Summarizer step failed: %s", e)
 
-        print(f"\n📊 Evolutionary Memory: {memory.summary()}")
+        print(f"\n{memory.summary()}")
         print("-" * 70)
 
-    print("\n🏁 LoongFlow run completed.")
+    print("\nRun complete.")
     print(memory.map_elites.summary())
 
+
 def main():
-    parser = argparse.ArgumentParser(description="LoongFlow PES Evolutionary Engine for Erdős #64")
-    parser.add_argument("--iterations", type=int, default=5, help="Number of PES cognitive cycles")
-    parser.add_argument("--test-ns", type=str, default="32,34,36", help="Comma-separated vertex sizes")
-    parser.add_argument("--timeout", type=float, default=90.0, help="Timeout in seconds for LLM calls")
+    parser = argparse.ArgumentParser(description="PES evolutionary engine for Erdos #64")
+    parser.add_argument("--iterations", type=int, default=5, help="PES cycles to run")
+    parser.add_argument(
+        "--test-ns",
+        type=str,
+        default=",".join(str(x) for x in DEFAULT_TEST_NS),
+        help="comma-separated orders; n <= 34 is already settled by exhaustive search",
+    )
+    parser.add_argument("--timeout", type=float, default=90.0, help="per-LLM-call timeout")
+    parser.add_argument("--seed", type=int, default=None, help="RNG seed for parent selection")
+    parser.add_argument(
+        "--count-cap", type=int, default=1000,
+        help="max cycles counted per length when verifying (1 = existence only)",
+    )
     args = parser.parse_args()
 
     test_ns = [int(x.strip()) for x in args.test_ns.split(",") if x.strip()]
-    run_loongflow(iterations=args.iterations, test_ns=test_ns, timeout_sec=args.timeout)
+    settled = [n for n in test_ns if n <= 34]
+    if settled:
+        logger.warning(
+            "Orders %s are already covered by exhaustive search (no cubic counterexample "
+            "exists there); they can only serve as warm-up.", settled
+        )
+
+    run_pes(
+        iterations=args.iterations,
+        test_ns=test_ns,
+        timeout_sec=args.timeout,
+        seed=args.seed,
+        count_cap=args.count_cap,
+    )
+
 
 if __name__ == "__main__":
     main()

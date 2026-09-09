@@ -1,4 +1,5 @@
 import Problem64.Basic
+import Problem64.Certificate
 
 /-!
 # Erdős Problem #64: The Erdős–Gyárfás Conjecture

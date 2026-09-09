@@ -5,10 +5,9 @@ description = "Neuro-Symbolic Search Pipelines for Erdős Problems #1 and #64"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "openevolve>=0.3.2",
+    # z3-solver is the only third-party runtime dependency: erdos-64/sat/run_sat.py
+    # imports it. openevolve, pyyaml and tqdm were declared here but imported nowhere.
     "z3-solver>=5.1.0",
-    "pyyaml>=6.0",
-    "tqdm>=4.64.0",
 ]
 
 [tool.uv]

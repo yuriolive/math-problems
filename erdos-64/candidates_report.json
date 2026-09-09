@@ -1,0 +1,873 @@
+[
+  {
+    "counterexample": false,
+    "n": 32,
+    "edges": 48,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 7,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 219,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 5,
+        "capped": false
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      18,
+      9,
+      8,
+      28,
+      29,
+      19,
+      6,
+      3,
+      20,
+      24,
+      5,
+      10,
+      16,
+      1,
+      21
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 18, 9, 8, 28, 29, 19, 6, 3, 20, 24, 5, 10, 16, 1, 21]. Counts [C4=0, C8=0, C16=219, C32=5]. ",
+    "file": "cuda/best_swarm_n32.json"
+  },
+  {
+    "counterexample": false,
+    "n": 34,
+    "edges": 51,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 6,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 545,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 822,
+        "capped": false
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      5,
+      6,
+      30,
+      32,
+      16,
+      4,
+      21,
+      11,
+      19,
+      12,
+      18,
+      13,
+      29,
+      10,
+      7
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 5, 6, 30, 32, 16, 4, 21, 11, 19, 12, 18, 13, 29, 10, 7]. Counts [C4=0, C8=0, C16=545, C32=822]. ",
+    "file": "cuda/best_swarm_n34.json"
+  },
+  {
+    "counterexample": false,
+    "n": 36,
+    "edges": 54,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 8,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 173,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 1788,
+        "capped": false
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      12,
+      25,
+      28,
+      31,
+      11,
+      24,
+      1,
+      2,
+      5,
+      4,
+      10,
+      3,
+      16,
+      19,
+      13
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 12, 25, 28, 31, 11, 24, 1, 2, 5, 4, 10, 3, 16, 19, 13]. Counts [C4=0, C8=0, C16=173, C32=1788]. ",
+    "file": "cuda/best_swarm_n36.json"
+  },
+  {
+    "counterexample": false,
+    "n": 38,
+    "edges": 57,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 6,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 768,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 28154,
+        "capped": false
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      19,
+      13,
+      8,
+      12,
+      20,
+      17,
+      30,
+      16,
+      22,
+      28,
+      9,
+      29,
+      6,
+      35,
+      23
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 19, 13, 8, 12, 20, 17, 30, 16, 22, 28, 9, 29, 6, 35, 23]. Counts [C4=0, C8=0, C16=768, C32=28154]. ",
+    "file": "cuda/best_swarm_n38.json"
+  },
+  {
+    "counterexample": false,
+    "n": 40,
+    "edges": 60,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 6,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 889,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 73888,
+        "capped": false
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      9,
+      16,
+      13,
+      12,
+      3,
+      11,
+      22,
+      10,
+      32,
+      39,
+      4,
+      2,
+      30,
+      18,
+      23
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 9, 16, 13, 12, 3, 11, 22, 10, 32, 39, 4, 2, 30, 18, 23]. Counts [C4=0, C8=0, C16=889, C32=73888]. ",
+    "file": "cuda/best_swarm_n40.json"
+  },
+  {
+    "counterexample": false,
+    "n": 42,
+    "edges": 63,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 7,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 820,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      13,
+      17,
+      1,
+      16,
+      7,
+      12,
+      14,
+      3,
+      33,
+      18,
+      8,
+      6,
+      29,
+      10,
+      28
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 13, 17, 1, 16, 7, 12, 14, 3, 33, 18, 8, 6, 29, 10, 28]. Counts [C4=0, C8=0, C16=820, C32=100000+]. ",
+    "file": "cuda/best_swarm_n42.json"
+  },
+  {
+    "counterexample": false,
+    "n": 44,
+    "edges": 66,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 6,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 1018,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      34,
+      3,
+      16,
+      15,
+      7,
+      27,
+      8,
+      2,
+      1,
+      24,
+      19,
+      41,
+      40,
+      29,
+      39
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 34, 3, 16, 15, 7, 27, 8, 2, 1, 24, 19, 41, 40, 29, 39]. Counts [C4=0, C8=0, C16=1018, C32=100000+]. ",
+    "file": "cuda/best_swarm_n44.json"
+  },
+  {
+    "counterexample": false,
+    "n": 48,
+    "edges": 72,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 7,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 1076,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      10,
+      25,
+      22,
+      8,
+      1,
+      20,
+      33,
+      26,
+      4,
+      5,
+      45,
+      24,
+      3,
+      6,
+      17
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 10, 25, 22, 8, 1, 20, 33, 26, 4, 5, 45, 24, 3, 6, 17]. Counts [C4=0, C8=0, C16=1076, C32=100000+]. ",
+    "file": "cuda/best_swarm_n48.json"
+  },
+  {
+    "counterexample": false,
+    "n": 50,
+    "edges": 75,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 7,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 1252,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      11,
+      17,
+      10,
+      4,
+      16,
+      18,
+      2,
+      47,
+      23,
+      5,
+      48,
+      29,
+      46,
+      41,
+      25
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 11, 17, 10, 4, 16, 18, 2, 47, 23, 5, 48, 29, 46, 41, 25]. Counts [C4=0, C8=0, C16=1252, C32=100000+]. ",
+    "file": "cuda/best_swarm_n50.json"
+  },
+  {
+    "counterexample": false,
+    "n": 52,
+    "edges": 78,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 7,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 1183,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      21,
+      27,
+      17,
+      2,
+      14,
+      32,
+      8,
+      24,
+      51,
+      38,
+      5,
+      28,
+      13,
+      4,
+      25
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 21, 27, 17, 2, 14, 32, 8, 24, 51, 38, 5, 28, 13, 4, 25]. Counts [C4=0, C8=0, C16=1183, C32=100000+]. ",
+    "file": "cuda/best_swarm_n52.json"
+  },
+  {
+    "counterexample": false,
+    "n": 54,
+    "edges": 81,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 7,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 1307,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      7,
+      1,
+      20,
+      24,
+      10,
+      19,
+      2,
+      9,
+      39,
+      45,
+      33,
+      14,
+      4,
+      31,
+      29
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 7, 1, 20, 24, 10, 19, 2, 9, 39, 45, 33, 14, 4, 31, 29]. Counts [C4=0, C8=0, C16=1307, C32=100000+]. ",
+    "file": "cuda/best_swarm_n54.json"
+  },
+  {
+    "counterexample": false,
+    "n": 56,
+    "edges": 84,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 7,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 1270,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      31,
+      38,
+      35,
+      2,
+      48,
+      7,
+      14,
+      37,
+      9,
+      5,
+      8,
+      4,
+      21,
+      34,
+      53
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 31, 38, 35, 2, 48, 7, 14, 37, 9, 5, 8, 4, 21, 34, 53]. Counts [C4=0, C8=0, C16=1270, C32=100000+]. ",
+    "file": "cuda/best_swarm_n56.json"
+  },
+  {
+    "counterexample": false,
+    "n": 60,
+    "edges": 90,
+    "min_degree": 3,
+    "max_degree": 3,
+    "is_cubic": true,
+    "girth": 3,
+    "diameter": 8,
+    "connected": true,
+    "components": 1,
+    "bipartite": false,
+    "checked_lengths": [
+      4,
+      8,
+      16,
+      32
+    ],
+    "has_c4": false,
+    "has_c8": false,
+    "has_c16": true,
+    "has_c32": true,
+    "has_c64": false,
+    "counts": [
+      {
+        "length": 4,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 8,
+        "count": 0,
+        "capped": false
+      },
+      {
+        "length": 16,
+        "count": 1360,
+        "capped": false
+      },
+      {
+        "length": 32,
+        "count": 100000,
+        "capped": true
+      }
+    ],
+    "power_of_two_cycle_count": 2,
+    "cycle_witness": [
+      0,
+      21,
+      13,
+      1,
+      33,
+      26,
+      27,
+      22,
+      28,
+      7,
+      51,
+      20,
+      57,
+      25,
+      41,
+      34
+    ],
+    "diagnostic_trace": "Collision: cycle of length 16 on vertices [0, 21, 13, 1, 33, 26, 27, 22, 28, 7, 51, 20, 57, 25, 41, 34]. Counts [C4=0, C8=0, C16=1360, C32=100000+]. ",
+    "file": "cuda/best_swarm_n60.json"
+  }
+]

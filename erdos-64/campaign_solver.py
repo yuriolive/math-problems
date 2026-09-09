@@ -1,11 +1,16 @@
-"""
-Campaign Solver for Erdős Problem #64 (Erdős–Gyárfás Conjecture).
-Combines:
-1. Massive RTX 4070 Super CUDA Swarm Searcher (68M moves/sec) across orders n in [32, 34, 36, 38, 40, 42, 44, 48].
-2. Seeded Micro-Polishing / Basin Hopping on promising candidates (C4=0, C8=0).
-3. LoongFlow Cognitive PES (Plan -> Execute -> Summarize) algebraic reasoning with local LLM.
-4. Instant Rust verifier certification and Lean 4 formal certificate export.
-5. Persistent experiment logging into SQLite results.db.
+"""Multi-order search campaign for Erdős Problem #64.
+
+Sweeps a list of vertex counts with the CUDA swarm, verifies every result with the
+compiled Rust verifier, keeps a candidate file per order, and optionally interleaves
+PES (Plan-Execute-Summarize) cycles driven by the local `agy` CLI.
+
+Two rules this runner enforces, both of which the earlier version broke:
+
+* A candidate file is only replaced when the new graph is LEXICOGRAPHICALLY better on
+  the verified cycle profile (C4, C8, C16, C32, C64). The old code overwrote whenever
+  C4 = C8 = 0, so saved candidates drifted sideways instead of improving.
+* Throughput comes from the kernel's own count of evaluated moves, not from
+  threads * iterations, which counted loop turns that never proposed a move.
 """
 
 import argparse
@@ -28,12 +33,13 @@ if sys.platform == "win32":
 root_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(root_dir))
 
-from engine.evaluator import verify_with_rust_binary, find_verifier_binary, evaluate_graph_code
-from engine.executor import polish_with_gpu, execute_plan
+from engine.agy_client import AgyError
+from engine.evaluator import verify_with_rust_binary, find_verifier_binary
+from engine.executor import execute_plan
 from engine.planner import generate_plan
 from engine.summarizer import summarize_and_reflect
 from engine.pes_memory import EvolutionaryMemory
-from engine.island import GraphProgram
+from engine.seeding import seed_archive_from_candidates, seed_archive_from_generators
 from engine.main import init_db, log_program, export_lean_certificate
 
 logging.basicConfig(
@@ -43,42 +49,123 @@ logging.basicConfig(
 )
 logger = logging.getLogger("CampaignSolver")
 
-def run_gpu_swarm_raw(n: int, iterations: int, seed_file: Path | None = None) -> tuple[dict, float]:
-    """Runs swarm_64.exe on RTX 4070 Super and returns (graph_dict, moves_per_sec)."""
+POW2_LENGTHS = (4, 8, 16, 32, 64)
+
+# Exhaustive search settles all general cubic graphs up to n = 34, so the campaign
+# starts at the open frontier by default.
+DEFAULT_ORDERS = [36, 38, 40, 42, 44, 48]
+
+# The CUDA kernel refuses n > 62 because it has no C64 tier.
+MAX_GPU_ORDER = 62
+
+
+def cycle_profile(detail) -> tuple:
+    """Verified cycle counts as a comparable tuple, shortest length first."""
+    return tuple(detail.counts.get(L, 0) for L in POW2_LENGTHS)
+
+
+def run_gpu_swarm(
+    n: int,
+    iterations: int,
+    seed_file: Path | None = None,
+    threads: int = 10240,
+    count_cap: int = 1000000,
+) -> tuple[dict, float]:
+    """Runs swarm_64 and returns (result, evaluated moves per second)."""
     exe = root_dir / "cuda" / "swarm_64.exe"
     if not exe.is_file():
-        raise FileNotFoundError(f"CUDA binary not found at {exe}")
+        raise FileNotFoundError(f"CUDA binary not found at {exe} (run cuda/build.bat)")
 
-    cmd = [str(exe), str(n), str(iterations), "--json-only"]
+    cmd = [
+        str(exe), str(n), str(iterations),
+        "--threads", str(threads),
+        "--count-cap", str(count_cap),
+        "--json-only",
+    ]
     if seed_file and seed_file.is_file():
         cmd.extend(["--seed-file", str(seed_file)])
 
-    t0 = time.time()
     proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(root_dir))
-    duration = time.time() - t0
+    # Exit 1 just means "no counterexample", which is the normal outcome.
+    if proc.returncode not in (0, 1):
+        raise RuntimeError(f"swarm_64 failed (exit {proc.returncode}): {proc.stderr.strip()[:300]}")
 
     out = proc.stdout.strip()
-    start = out.find("{")
-    end = out.rfind("}") + 1
-    if start != -1 and end != -1:
-        data = json.loads(out[start:end])
-        total_moves = 10240 * iterations
-        mps = total_moves / max(0.001, duration)
-        return data, mps
+    start, end = out.find("{"), out.rfind("}") + 1
+    if start == -1 or end <= start:
+        raise RuntimeError(f"swarm_64 emitted no JSON. stderr: {proc.stderr.strip()[:300]}")
 
-    raise RuntimeError(f"Swarm failed to output valid JSON. Stderr: {proc.stderr}")
+    data = json.loads(out[start:end])
+    moves = data.get("evaluated_moves", 0)
+    duration_s = max(1e-3, data.get("duration_ms", 0.0) / 1000.0)
+    return data, moves / duration_s
+
+
+def save_if_better(candidate_path: Path, graph: dict, detail) -> bool:
+    """Writes the candidate only if its verified profile is strictly better."""
+    new_profile = cycle_profile(detail)
+
+    if candidate_path.is_file():
+        try:
+            old = json.loads(candidate_path.read_text(encoding="utf-8"))
+            old_profile = tuple(old.get("verified", {}).get(f"C{L}", 0) for L in POW2_LENGTHS)
+            if "verified" not in old:
+                # Older files carry no verified profile; re-verify before comparing.
+                old_detail = verify_with_rust_binary(
+                    find_verifier_binary(), {"n": old["n"], "adj": old["adj"]}, count_cap=1000
+                )
+                old_profile = cycle_profile(old_detail)
+            if new_profile >= old_profile:
+                logger.info(
+                    "n=%d: keeping the existing candidate %s (new %s is not better)",
+                    detail.n, old_profile, new_profile
+                )
+                return False
+            logger.info("n=%d: improving candidate %s -> %s", detail.n, old_profile, new_profile)
+        except Exception as e:
+            logger.warning("Could not compare against %s (%s); overwriting.", candidate_path.name, e)
+
+    payload = {
+        "n": graph["n"],
+        "adj": graph["adj"],
+        "verified": {f"C{L}": detail.counts.get(L, 0) for L in POW2_LENGTHS if L <= graph["n"]},
+        "capped": {f"C{L}": detail.capped.get(L, False) for L in POW2_LENGTHS if L <= graph["n"]},
+        "is_cubic": detail.is_cubic,
+        "connected": detail.connected,
+        "girth": detail.girth,
+        "counterexample": detail.counterexample,
+        "saved_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+    candidate_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return True
+
 
 def execute_campaign(
-    target_ns: list[int] = [32, 34, 36, 38, 40, 42, 44, 48],
+    target_ns: list[int] | None = None,
     swarm_iters: int = 50000,
     rounds: int = 3,
-    run_loongflow: bool = True,
+    run_pes: bool = True,
+    threads: int = 10240,
+    count_cap: int = 1000,
 ):
-    print("=" * 80)
-    print("🚀 ERDŐS PROBLEM #64 SOLVER CAMPAIGN LAUNCHED")
-    print(f"Target Orders: {target_ns} | Swarm Iterations: {swarm_iters} (512M moves/run)")
-    print(f"Hardware: NVIDIA GeForce RTX 4070 Super + Ryzen 7 9800X3D + Rust Verifier + Lean 4")
-    print("=" * 80)
+    target_ns = target_ns or list(DEFAULT_ORDERS)
+
+    print("=" * 78)
+    print("ERDOS PROBLEM #64 SEARCH CAMPAIGN")
+    print(f"Orders: {target_ns} | Swarm iterations/thread: {swarm_iters} | Threads: {threads}")
+    print("=" * 78)
+
+    settled = [n for n in target_ns if n <= 34]
+    if settled:
+        logger.warning(
+            "Orders %s are already excluded by exhaustive search; no counterexample can "
+            "be found there.", settled
+        )
+    too_big = [n for n in target_ns if n > MAX_GPU_ORDER]
+    if too_big:
+        logger.warning("Orders %s exceed the kernel limit of %d and will be skipped.",
+                       too_big, MAX_GPU_ORDER)
+        target_ns = [n for n in target_ns if n <= MAX_GPU_ORDER]
 
     db_path = root_dir / "results.db"
     conn = init_db(db_path)
@@ -87,7 +174,8 @@ def execute_campaign(
     with conn:
         conn.execute(
             "INSERT INTO runs (run_id, started_at, test_ns, num_islands, status) VALUES (?, ?, ?, ?, ?)",
-            (run_id, datetime.datetime.now(datetime.timezone.utc).isoformat(), str(target_ns), len(target_ns), "RUNNING"),
+            (run_id, datetime.datetime.now(datetime.timezone.utc).isoformat(),
+             str(target_ns), len(target_ns), "RUNNING"),
         )
 
     verifier = find_verifier_binary()
@@ -95,135 +183,125 @@ def execute_campaign(
     cuda_dir = root_dir / "cuda"
     formalization_dir = root_dir / "formalization"
 
-    # Seed MAP-Elites archive
-    from engine.baseline_graphs import get_seed_generators
-    for name, code in get_seed_generators().items():
-        prog = evaluate_graph_code(code, program_id=f"seed_{name}", test_ns=target_ns[:3])
-        memory.map_elites.add(prog, prog.girth, prog.diameter, prog.bipartite)
-
-    for n in target_ns:
-        cand = cuda_dir / f"best_swarm_n{n}.json"
-        if cand.is_file():
-            try:
-                with open(cand, "r", encoding="utf-8") as f:
-                    cdata = json.load(f)
-                adj = cdata.get("adj", [])
-                code = f'''def generate_graph(n: int) -> dict:
-    adj = {adj}
-    if n == {len(adj)}:
-        return {{"n": {len(adj)}, "adj": adj}}
-    res = [[] for _ in range(n)]
-    for i in range(n):
-        res[i].extend([(i + 1) % n, (i - 1 + n) % n, (i + n // 2) % n])
-    return {{"n": n, "adj": res}}
-'''
-                prog = evaluate_graph_code(code, program_id=f"gpu_swarm_n{n}", test_ns=[n])
-                memory.map_elites.add(prog, prog.girth, prog.diameter, prog.bipartite)
-            except Exception as e:
-                logger.warning(f"Failed to seed MAP-Elites with {cand.name}: {e}")
-
-    print(f"Archive populated with {memory.map_elites.coverage()} initial behavioral niches.", flush=True)
+    seed_archive_from_generators(memory, target_ns[:2], count_cap=count_cap)
+    seed_archive_from_candidates(memory, cuda_dir, count_cap=count_cap)
+    print(f"Archive holds {memory.map_elites.coverage()} behavioural niches.", flush=True)
 
     found_counterexample = False
 
     for rnd in range(1, rounds + 1):
-        print(f"\n🌟 ==================== [ROUND {rnd}/{rounds}] GPU SWARM SWEEP ====================", flush=True)
+        print(f"\n===== ROUND {rnd}/{rounds}: GPU SWARM SWEEP =====", flush=True)
 
         for n in target_ns:
-            seed_candidate = cuda_dir / f"best_swarm_n{n}.json"
-            has_seed = seed_candidate.is_file()
-            mode = f"Seeded Polish ({seed_candidate.name})" if has_seed else "Stochastic Explore"
+            candidate_path = cuda_dir / f"best_swarm_n{n}.json"
+            has_seed = candidate_path.is_file()
+            mode = f"seeded from {candidate_path.name}" if has_seed else "stochastic start"
 
-            print(f"\n⚡ Running GPU Swarm on n={n} ({mode})...")
+            print(f"\n[n={n}] running the swarm ({mode})...")
             try:
-                g_data, mps = run_gpu_swarm_raw(n, iterations=swarm_iters, seed_file=seed_candidate if has_seed else None)
-                best_energy = g_data.get("best_energy", 999999)
-                is_ce = g_data.get("counterexample", False)
-                print(f"   [GPU Complete]: Best Energy = {best_energy} | Throughput = {mps/1e6:.1f} M moves/s")
-
-                # Verify via compiled Rust Verifier
-                v_res = verify_with_rust_binary(verifier, g_data)
-                print(f"   [Rust Verifier]: Cubic={v_res.is_cubic}, Girth={v_res.girth}, C4={v_res.has_c4}, C8={v_res.has_c8}, C16={v_res.has_c16}, C32={v_res.has_c32}")
-
-                # Save if it improves or avoids C4 & C8
-                if not v_res.has_c4 and not v_res.has_c8:
-                    print(f"   🔥 HIGH-VALUE CANDIDATE FOUND ON n={n} (C4=0, C8=0)! Saving to {seed_candidate.name}...")
-                    with open(seed_candidate, "w", encoding="utf-8") as f:
-                        json.dump(g_data, f, indent=2)
-
-                # Check for counterexample!
-                if v_res.counterexample or is_ce:
-                    print("\n" + "🎉" * 40)
-                    print(f"🏆 UNPRECEDENTED DISCOVERY! ERDŐS #64 COUNTEREXAMPLE CONFIRMED ON n={n}!")
-                    print("🎉" * 40)
-                    ce_file = cuda_dir / f"WINNING_COUNTEREXAMPLE_n{n}.json"
-                    with open(ce_file, "w", encoding="utf-8") as f:
-                        json.dump(g_data, f, indent=2)
-
-                    # Export Lean 4 certificate
-                    dummy_prog = GraphProgram(
-                        id=f"counterexample_n{n}",
-                        code=f"# Counterexample adjacency on n={n}:\nadj = {g_data.get('adj')}",
-                        fitness=100000.0,
-                        is_counterexample=True,
-                        all_cubic=True,
-                    )
-                    export_lean_certificate(dummy_prog, formalization_dir)
-                    found_counterexample = True
-                    break
-
+                g_data, mps = run_gpu_swarm(
+                    n, iterations=swarm_iters,
+                    seed_file=candidate_path if has_seed else None,
+                    threads=threads,
+                )
             except Exception as e:
-                logger.error(f"Error running swarm on n={n}: {e}")
+                logger.error("Swarm failed at n=%d: %s", n, e)
+                continue
+
+            print(f"   GPU: best energy {g_data.get('best_energy')} | "
+                  f"{mps / 1e6:.2f}M evaluated moves/s")
+
+            detail = verify_with_rust_binary(
+                verifier, {"n": g_data["n"], "adj": g_data["adj"]}, count_cap=count_cap
+            )
+            counts_str = ", ".join(
+                f"C{L}={detail.counts[L]}{'+' if detail.capped.get(L) else ''}"
+                for L in sorted(detail.counts)
+            )
+            print(f"   verifier: cubic={detail.is_cubic} connected={detail.connected} "
+                  f"girth={detail.girth} | {counts_str}")
+
+            if detail.is_cubic:
+                save_if_better(candidate_path, g_data, detail)
+
+            if detail.counterexample:
+                print("\n" + "=" * 78)
+                print(f"VERIFIER REPORTS A COUNTEREXAMPLE AT n={n}")
+                print("Min degree >= 3 and no cycle at any power-of-two length <= n.")
+                print("Re-verify independently before making any claim.")
+                print("=" * 78)
+                ce_file = cuda_dir / f"CANDIDATE_COUNTEREXAMPLE_n{n}.json"
+                ce_file.write_text(json.dumps(g_data, indent=2), encoding="utf-8")
+
+                from engine.island import GraphProgram
+                prog = GraphProgram(
+                    id=f"counterexample_n{n}",
+                    code=f"# Counterexample adjacency at n={n}:\nadj = {g_data.get('adj')}",
+                    fitness=100000.0,
+                    is_counterexample=True,
+                    all_cubic=detail.is_cubic,
+                    connected=detail.connected,
+                )
+                export_lean_certificate(prog, formalization_dir, graph=g_data)
+                found_counterexample = True
+                break
 
         if found_counterexample:
             break
 
-        # Interleaved LoongFlow PES Cognitive Loop
-        if run_loongflow:
-            print(f"\n🧠 ==================== [ROUND {rnd}/{rounds}] LOONGFLOW PES COGNITIVE LOOP ====================")
-            elites = memory.map_elites.get_elites()
-            parent = elites[0] if elites else None
-
-            # Formulate plan targeting n=32 or n=34
-            target_n = 32 if rnd % 2 == 1 else 34
-            print(f"🎯 LoongFlow targeting n={target_n} with abductive reasoning...")
+        if run_pes:
+            print(f"\n===== ROUND {rnd}/{rounds}: PES COGNITIVE CYCLE =====")
+            target_n = target_ns[(rnd - 1) % len(target_ns)]
+            print(f"Targeting n={target_n}...")
             try:
+                elites = memory.map_elites.get_elites()
+                parent = max(elites, key=lambda p: p.fitness) if elites else None
                 blueprint = generate_plan(parent, memory, target_n=target_n, timeout_sec=90.0)
-                print("✅ Strategic Blueprint formulated:")
+                print("Blueprint:")
                 for line in blueprint.splitlines()[:5]:
-                    print(f"   │ {line}")
+                    print(f"   | {line}")
 
-                child, code = execute_plan(blueprint, parent, test_ns=[target_n], timeout_sec=90.0)
-                print(f"✅ Synthesized & Rust Verified: Fitness={child.fitness:.1f}, Cubic={child.all_cubic}, Girth={child.girth}")
+                child, code = execute_plan(
+                    blueprint, parent, test_ns=[target_n], timeout_sec=90.0, count_cap=count_cap
+                )
+                print(f"Synthesized: fitness {child.fitness:.1f} | cubic {child.all_cubic} | "
+                      f"girth {child.girth}")
 
                 if child.is_counterexample:
-                    print("\n🎉🎉🎉 COUNTEREXAMPLE FOUND VIA LOONGFLOW PES! 🎉🎉🎉")
+                    print("\nPES produced a graph the verifier calls a counterexample.")
                     export_lean_certificate(child, formalization_dir)
                     found_counterexample = True
                     break
 
                 summary = summarize_and_reflect(blueprint, child, memory, timeout_sec=90.0)
-                print(f"🔬 Distilled Structural Lesson: {summary.get('lesson')}")
+                if summary.get("lesson"):
+                    print(f"Lesson: {summary['lesson']}")
                 log_program(conn, run_id, child)
-
+            except AgyError as e:
+                logger.warning("PES stage skipped, LLM unavailable: %s", e)
+                run_pes = False
             except Exception as e:
-                logger.error(f"LoongFlow step failed: {e}")
+                logger.error("PES stage failed: %s", e)
 
     with conn:
         conn.execute(
             "UPDATE runs SET status = ? WHERE run_id = ?",
-            ("SUCCESS" if found_counterexample else "COMPLETED", run_id),
+            ("CANDIDATE_FOUND" if found_counterexample else "COMPLETED", run_id),
         )
     conn.close()
+    print("\nCampaign finished.")
 
-    print("\n🏁 Campaign run finished.")
 
 def main():
-    parser = argparse.ArgumentParser(description="Erdős #64 Solver Campaign")
-    parser.add_argument("--orders", type=str, default="32,34,36,38,40,42,44,48", help="Orders to sweep")
-    parser.add_argument("--iters", type=int, default=50000, help="Swarm moves/thread (default: 50,000)")
-    parser.add_argument("--rounds", type=int, default=3, help="Campaign rounds")
-    parser.add_argument("--no-loongflow", action="store_true", help="Skip LoongFlow PES cycles")
+    parser = argparse.ArgumentParser(description="Erdos #64 search campaign")
+    parser.add_argument("--orders", type=str, default=",".join(str(n) for n in DEFAULT_ORDERS),
+                        help="orders to sweep; n <= 34 is already settled")
+    parser.add_argument("--iters", type=int, default=50000, help="swarm steps per thread")
+    parser.add_argument("--rounds", type=int, default=3, help="campaign rounds")
+    parser.add_argument("--threads", type=int, default=10240, help="CUDA threads")
+    parser.add_argument("--count-cap", type=int, default=1000,
+                        help="max cycles counted per length during verification")
+    parser.add_argument("--no-pes", action="store_true", help="skip the LLM cycles")
     args = parser.parse_args()
 
     orders = [int(x.strip()) for x in args.orders.split(",") if x.strip()]
@@ -231,8 +309,11 @@ def main():
         target_ns=orders,
         swarm_iters=args.iters,
         rounds=args.rounds,
-        run_loongflow=not args.no_loongflow,
+        run_pes=not args.no_pes,
+        threads=args.threads,
+        count_cap=args.count_cap,
     )
+
 
 if __name__ == "__main__":
     main()

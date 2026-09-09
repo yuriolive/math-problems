@@ -1,50 +1,23 @@
-"""
-Mutator module for Erdős Problem #64 using Antigravity CLI (`agy -p`).
-Implements AlphaEvolve / OpenEvolve Artifact Side-Channel (Trace-Reflective Feedback).
-Zero external API keys required.
+"""Mutation prompts for the island engine.
+
+The LLM call itself lives in `agy_client`; this module only builds prompts.
 """
 
-import re
-import subprocess
 import logging
+
+try:
+    from .agy_client import call_agy_prompt, extract_python_code
+    from .planner import KNOWN_CONSTRAINTS
+except ImportError:  # direct script execution
+    from agy_client import call_agy_prompt, extract_python_code
+    from planner import KNOWN_CONSTRAINTS
 
 logger = logging.getLogger(__name__)
 
-def call_agy_prompt(prompt: str, timeout_sec: float = 60.0) -> str:
-    cmd = ["agy", "-p", prompt]
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=timeout_sec,
-    )
-    return result.stdout
 
 def mutate_with_agy(prompt: str, timeout_sec: float = 60.0) -> str:
-    raw_output = call_agy_prompt(prompt, timeout_sec=timeout_sec)
+    return extract_python_code(call_agy_prompt(prompt, timeout_sec=timeout_sec))
 
-    match = re.search(r"```python\s*\n(.*?)\n```", raw_output, re.DOTALL | re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-
-    match_any = re.search(r"```\s*\n(.*?)\n```", raw_output, re.DOTALL)
-    if match_any:
-        return match_any.group(1).strip()
-
-    if "def generate_graph" in raw_output:
-        lines = raw_output.splitlines()
-        code_lines = []
-        capturing = False
-        for line in lines:
-            if line.startswith("def generate_graph") or line.startswith("import "):
-                capturing = True
-            if capturing:
-                code_lines.append(line)
-        if code_lines:
-            return "\n".join(code_lines).strip()
-
-    return raw_output.strip()
 
 def build_graph_mutation_prompt(
     parent_code: str,
@@ -52,48 +25,52 @@ def build_graph_mutation_prompt(
     island_id: int,
     generation: int,
     diagnostic_trace: str = "",
+    target_ns: list[int] | None = None,
 ) -> str:
-    """
-    AlphaEvolve-style prompt passing the parent code along with the exact
-    runtime diagnostic trace / cycle witness from the Rust verifier.
-    """
+    """Trace-reflective mutation prompt: parent code plus the verifier's witness."""
+    if target_ns is None:
+        target_ns = [36, 38, 40]
+
     trace_section = ""
     if diagnostic_trace:
         trace_section = f"""
-=== RUNTIME EXECUTION DIAGNOSTICS (Artifact Side-Channel) ===
-The Rust verifier analyzed the previous candidate graph and found the following:
+=== VERIFIER DIAGNOSTICS FOR THE PREVIOUS CANDIDATE ===
 {diagnostic_trace}
 
-INSTRUCTION BASED ON TRACE:
-Act as an automated debugger: inspect the exact vertices/edges involved in the collision above.
-Refactor your generator logic so that those specific cycles cannot form, while maintaining exact 3-regularity!
-============================================================
+Use this: the witness lists the exact vertices of the shortest offending cycle.
+Change the generator so that cycle cannot close, while keeping strict 3-regularity.
+=======================================================
 """
 
-    prompt = f"""You are an extremal graph theory mathematician attacking Erdős Problem #64 (The Erdős–Gyárfás Conjecture).
+    pow2_targets = sorted({L for n in target_ns for L in (4, 8, 16, 32, 64) if L <= n})
 
-The objective is to find a counterexample: a 3-regular (cubic) graph with NO simple cycles of length 2^k (no C4, no C8, no C16, no C32).
-Current parent fitness: {parent_fitness:.1f}.
-Island: {island_id}, Generation: {generation}.
+    return f"""You are an extremal graph theorist attacking Erdős Problem #64
+(the Erdős-Gyárfás conjecture).
+
+GOAL: a cubic graph with no cycle whose length is a power of two. At the orders being
+tested ({target_ns}) that means avoiding all of: {pow2_targets}.
+
+Parent fitness: {parent_fitness:.1f} | Island {island_id} | Generation {generation}.
+
+{KNOWN_CONSTRAINTS}
 {trace_section}
-
-Here is the current generator function:
+CURRENT GENERATOR:
 ```python
 {parent_code}
 ```
 
-Task:
-Propose an improved Python function `def generate_graph(n: int) -> dict:` that:
-1. Returns `{{'n': n, 'adj': [[neighbor_indices], ...]}}`.
-2. Strictly ensures EVERY vertex has degree exactly 3.
-3. Strategically avoids creating cycles of length 4, 8, 16, and 32!
-4. You may explore:
-   - Cayley graphs on non-abelian groups (e.g., A_4, S_4, alternating groups) with carefully chosen 3 generators.
-   - Voltage graph lifts / permutation covers.
-   - Generalized Petersen GP(n/2, k) variations or I-graphs.
-   - Chord-exchange networks avoiding even cycle resonances.
-   - Snark constructions (like Blanuša snarks, Flower snarks).
+TASK: propose an improved `def generate_graph(n: int) -> dict:` that
+1. returns {{'n': n, 'adj': [[neighbour, ...], ...]}};
+2. gives every vertex degree exactly 3, with no self-loops or multi-edges;
+3. returns a CONNECTED graph (a disconnected cubic graph is never a new
+   counterexample, since one component would already be a smaller one);
+4. targets the lengths above, shortest first: eliminating C4 and C8 matters more than
+   reducing C16, and a graph with no C8 beats one with fewer C16 but an C8 present.
 
-Output ONLY the Python code in a ```python ... ``` block. Do not include markdown commentary outside the block.
+Worth exploring: Cayley graphs on non-abelian groups (A4, A5, S4) with three chosen
+generators; voltage graph and permutation lifts; snarks (Blanusa, flower, Goldberg)
+and their covers; boundaried gadget assemblies with controlled interface lengths.
+Avoid abelian Cayley graphs: the commutator relation forces a 4-cycle.
+
+Output ONLY the Python code in a ```python ... ``` block.
 """
-    return prompt
