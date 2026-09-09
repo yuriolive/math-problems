@@ -1,5 +1,5 @@
 .PHONY: all build-verifier build-cuda build-lean test test-rust test-python test-lean \
-        search-gpu polish-gpu search-pes search-sat search-islands recount verify report paper paper-clean clean
+        search-gpu polish-gpu search-pes search-sat search-islands recount verify report paper paper-clean check-docs clean
 
 all: build-verifier build-cuda
 
@@ -68,3 +68,6 @@ paper:
 
 paper-clean:
 	cd ../../.. && uv run python tools/paper/build.py problems/erdos/64/paper --clean
+
+check-docs:
+	cd ../../.. && uv run python tools/check_docs.py

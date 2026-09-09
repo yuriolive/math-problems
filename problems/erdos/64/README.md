@@ -16,7 +16,7 @@ constitutes a proof.
 > Every finite graph with minimum degree $\delta(G) \ge 3$ contains a simple cycle whose
 > length is a power of two ($4, 8, 16, 32, 64, \dots$).
 
-- **The Bounty**: **\$1000** ([erdosproblems.com/64](https://www.erdosproblems.com/64)).
+- Problem page: [erdosproblems.com/64](https://www.erdosproblems.com/64).
 - **The single most important known result** — Liu and Montgomery [LiMo20] proved the
   conjecture **true whenever the minimum degree exceeds an absolute constant**. The same work
   disproved the stronger conjecture of Erdős and Gyárfás. This is the reason a search
@@ -393,7 +393,7 @@ statement is unconditional.
 `EGCDensity.lean` goes further and isolates *what controls the constant* in this whole
 family of bounds. Counting the $V_3$–$V_4$ edges from both ends gives
 
-$$4|V_4| + S_3 \le 3|V_3|, \qquad S_3 = \sum_{v \in V_3} \#\{\text{cubic neighbours of } v\},$$
+$$4|V_4| + S_3 \le 3|V_3|, \qquad S_3 = \sum_{v \in V_3} \operatorname{cd}(v),$$
 
 so the constant is decided by $S_3$, i.e. by twice the number of edges *inside* $V_3$.
 Carr's domination lemma gives $S_3 \ge |V_3|$, which reproduces Bisch's $2/3$ exactly —

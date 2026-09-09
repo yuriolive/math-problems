@@ -43,6 +43,11 @@ a script proves useful twice, it moves up.
   `uv run python tools/paper/build.py problems/<collection>/<id>/paper`, or `--all`. Shared
   macros live in `tools/paper/shared/preamble.tex`, including `\checkedin{...}` for
   attaching a Lean identifier to a printed statement.
+* **[`tools/check_docs.py`](./tools/check_docs.py)** — catches markdown that renders
+  broken on GitHub even though it looks fine locally: `#` inside math (KaTeX refuses it),
+  a LaTeX word that lost its backslash, and an unescaped `$` that silently opens a math
+  span across paragraphs. All three have occurred here. Run
+  `uv run python tools/check_docs.py`; it exits non-zero, so it can gate a commit.
 * **[`.agents/skills/neuro-symbolic-math`](./.agents/skills/neuro-symbolic-math/)** — the
   methodology: how to scaffold a problem, how to build a checker that cannot quietly lie,
   how to design a search objective that actually has a gradient, and the working rules

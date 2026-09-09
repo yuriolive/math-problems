@@ -7,7 +7,7 @@ which are closed, so that compute and attention go somewhere useful.
 ## The state of the problem
 
 The conjecture: every finite graph with minimum degree at least 3 contains a cycle whose
-length is a power of two. Open, $1000 bounty, [erdosproblems.com/64](https://www.erdosproblems.com/64).
+length is a power of two. Open; see [erdosproblems.com/64](https://www.erdosproblems.com/64).
 
 What is settled, and what it forecloses:
 
@@ -76,7 +76,7 @@ counterexamples, then write it up. The mathematical content is done.
 Recorded so nobody repeats it. `formalization-egc/EGCDensity.lean` proves the
 reformulation that governs this whole family of bounds:
 
-$$4|V_4| + S_3 \le 3|V_3|, \qquad S_3 = \sum_{v \in V_3} \#\{\text{cubic neighbours of } v\},$$
+$$4|V_4| + S_3 \le 3|V_3|, \qquad S_3 = \sum_{v \in V_3} \operatorname{cd}(v),$$
 
 so $S_3$ (twice the number of edges *inside* $V_3$) decides the constant. Carr's
 domination lemma gives $S_3 \ge |V_3|$, which is exactly Bisch's $2/3$ — meaning **$2/3$
