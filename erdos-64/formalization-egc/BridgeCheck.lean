@@ -1,0 +1,8 @@
+import EGCBridge
+
+#check @EGCStrict.strict_two_thirds_of_isMinCex
+#check @EGCStrict.strict_two_thirds_rat_of_isMinCex
+#print axioms EGCStrict.minCexHyps_of_isMinCex
+#print axioms EGCStrict.strict_two_thirds_of_isMinCex
+#print axioms EGCStrict.strict_two_thirds_rat_of_isMinCex
+#print axioms EGCStrict.card_cubic_ge_succ_of_isMinCex

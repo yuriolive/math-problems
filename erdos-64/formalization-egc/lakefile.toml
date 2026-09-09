@@ -1,5 +1,7 @@
 name = "EGCStrict"
 version = "0.1.0"
+# EGCBridge is deliberately NOT a default target: it needs vendor/EGC.lean, which is a
+# separate unlicensed work and is not redistributed here. See EGCBridge.lean.
 defaultTargets = ["EGCStrict", "EGCLift"]
 
 [[require]]
@@ -11,3 +13,10 @@ name = "EGCStrict"
 
 [[lean_lib]]
 name = "EGCLift"
+
+[[lean_lib]]
+name = "EGCBridge"
+
+# Bisch's file, fetched by hand into the package root. Not redistributed here.
+[[lean_lib]]
+name = "EGC"
