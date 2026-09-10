@@ -263,9 +263,12 @@ uv run python -m unittest discover -s tests
 ran the author's `scripts/verify_release.sh`, which checks 50 artifact SHA-256 sums, builds
 the certificate, and prints the axiom closure of `eqSystem6_no_solution_d3`. A source scan
 of the pinned tree finds no `sorry` or `admit` token in any `.lean` file and `native_decide`
-in 10 files. **The release script is running in that container at the time of this commit; its axiom
-closure and wall time replace this sentence when it finishes, and until then the $n = 6$
-row above is trusted, not verified.**
+in 10 files. **Not finished in the session that started it.** The Mathlib cache fetch completed at
+03:23 UTC; `lake build KrennGuCertificate` then ran on the 4-core box and had produced
+186 compiled objects by 04:17 UTC, when the session had to stop for a credit reset.
+No axiom closure was printed here, so the $n = 6$ row above is **trusted, not verified**.
+Reproduce with `tools/audit_gallagher_certificate.sh` on a machine with 8 or more cores; the
+author reports 22 minutes there.
 
 Status of the search itself: **not started.** No claim is made here about $\mu(K_8)$, and the
 claim about $\mu(K_6)$ is Gallagher's, trusted to exactly the extent the audit above says.
@@ -278,7 +281,8 @@ problems/krenn-gu/matching-index/
 ├── ROADMAP.md              what is worth trying, what is closed, and why
 ├── verifier/               exact ground-truth checker (Rust, no floating point)
 ├── instances/              the corpus, including the published K4 extremal graph
-├── tools/                  full_support.py, the largest instance for a given (n, d)
+├── sat/                    GF(2) parity relaxation encoders (direction G in the roadmap)
+├── tools/                  full_support.py; the certificate audit script; the lemma-hunt workflow
 └── tests/                  differential tests against an independent reference
 ```
 

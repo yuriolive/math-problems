@@ -36,13 +36,15 @@ entries solved with commit-pinned links. Trust note: the corollaries inherit Gal
 `Lean.ofReduceBool` and `Lean.trustCompiler`; the audit tool reports that separately, as it
 should.
 
-### F. Independent audit of the $n = 6$ certificate (running)
+### F. Independent audit of the $n = 6$ certificate (started, not finished)
 
-Clone at `c04696e`, `elan` toolchain 4.27.0, `lake exe cache get`, then the author's
-`scripts/verify_release.sh` (50 checksums, `lake build KrennGuCertificate`, `#print axioms`).
-The result goes in README §3 with the wall time on this hardware. Also run
-`tools/lean/audit.py` over the tree so the trusted-evaluator flag is recorded in this
-repository's own words. A result trusted here is one whose axiom closure was printed here.
+[`tools/audit_gallagher_certificate.sh`](./tools/audit_gallagher_certificate.sh) does it from
+a clean machine: clone at `c04696e`, `elan` toolchain 4.27.0, `lake exe cache get`, then the
+author's `scripts/verify_release.sh` (50 checksums, `lake build KrennGuCertificate`,
+`#print axioms`). README §3 records how far the first run got. Also run `tools/lean/audit.py`
+over the tree so the trusted-evaluator flag is recorded in this repository's own words. A
+result trusted here is one whose axiom closure was printed here; until then the $n = 6$ row
+in the README is trusted, not verified.
 
 ### A. Decide $n = 8$ exactly
 
@@ -79,6 +81,42 @@ Milestones, each a gate:
   continues.
 * **M3, branch closure at $n = 8$**, then the assembly theorem, then the write-up. The
   3.000 EUR needs peer review, so the paper is the deliverable.
+
+### G. The GF(2) parity route to the integer versions, for all $n$
+
+For integer weights, $A(\iota) \bmod 2$ is the number of perfect matchings of the odd-weight
+support, mod 2. So an integer-weight GHZ graph forces a coloured support in which every
+constant colouring has an odd matching count and every other colouring an even one, and
+over $\mathrm{GF}(2)$ a Hafnian is a Pfaffian whose square is a determinant: the $3^n$ induced
+adjacency matrices must be nonsingular exactly for the constant colourings. Rank arguments
+over $\mathrm{GF}(2)$ are the kind that generalise to all $n$, and a general-$n$ parity theorem
+would settle the Formal Conjectures entries `eqSystem_no_solution_ge6_ge3_int` and
+`_trinary_int` (not the complex conjecture, and not the prize).
+
+Go/no-go is the $n = 6$ instance: a parity support there means parity alone cannot prove the
+integer conjecture; none means the route is live. Encoders are in [`sat/`](./sat/):
+`parity_cadical.py` (python-sat, plain CDCL with XOR chains) decides $n = 4$ instantly and
+stalled for 16 minutes at $n = 6$; `parity_cryptominisat.py` (XOR-native, optional
+`pycryptosat` dependency, symmetry-breaking fix of one colour-0 matching) is the one to use.
+**Measured on 10 September 2026:** $n = 4$ satisfiable in 0.0 s with both encoders (the $K_4$
+graph); $n = 6$: undecided at 04:17 UTC, CryptoMiniSat still running since 04:13 UTC; the final state is recorded in the session's last commit.
+
+### H. The induction lemma hunt (started, not finished)
+
+With the $n = 6$ base case in hand, the conjecture is equivalent to an inductive step, and
+the missing step is exactly the case the MFCS 2024 reduction does not cover: a GHZ graph of
+dimension 3 on $n \ge 8$ vertices with a 4-connected skeleton must yield one on $n - 2$
+vertices. [`tools/lemma_hunt_workflow.js`](./tools/lemma_hunt_workflow.js) is a Claude Code
+workflow that attacks this with six independent lenses (vertex-pair contraction through a
+first derivative of the Hafnian, colour-specific cuts, the Hamming hierarchy of near-constant
+colourings, GF(2) and Pfaffians, tensor flattenings, transversal Fourier transform), each
+required to state a precise lemma and ship an exact-arithmetic test against `ghzcheck`, then
+three skeptics per proposal and a judge. It was launched at 04:10 UTC on 10 September 2026
+on a 4-core container (so two agents at a time) and is being stopped at the credit reset (after 04:17 UTC) before the
+skeptic pass could complete. Partial results, if any completed, are recorded in the session's last commit.
+
+Nothing from the hunt is in the live directions above until it has survived the skeptic
+pass; the record of what was proposed is here so the next run does not start from zero.
 
 ### B. Counterexample hunt in the cyclotomic regime, now at $n = 8$
 
