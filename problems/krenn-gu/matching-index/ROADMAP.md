@@ -116,11 +116,49 @@ colourings, GF(2) and Pfaffians, tensor flattenings, transversal Fourier transfo
 required to state a precise lemma and ship an exact-arithmetic test against `ghzcheck`, then
 three skeptics per proposal and a judge. It was launched at 04:10 UTC on 10 September 2026
 on a 4-core container (so two agents at a time) and stopped at 04:36 UTC for a credit reset. Two of the six proposers (contraction, colour cuts) had
-started and were still reading the sources; none returned a proposal, no skeptic ran, and no
-files were written. There are no results from this run.
+started. Their full transcripts contain read-only commands and then the interrupt: **no
+proposal, no test, no file written, no skeptic verdict.** There are no mathematical results
+from this run.
+
+What the run did establish is a reading list, recorded in the next section because it would
+otherwise have been lost with the container.
 
 Nothing from the hunt is in the live directions above until it has survived the skeptic
 pass; the record of what was proposed is here so the next run does not start from zero.
+
+### I. Gallagher's method notes, and why they are the first thing to read
+
+His repository carries five design notes alongside the certificate. They are **not**
+redistributed here: the repository has no licence file, so this follows the same rule as
+`EGC.lean` in Erdős 64 (see [`NOTICE`](../../../NOTICE)). Fetch them by hand:
+
+```bash
+git clone https://github.com/algal/krenn-gu-6x3-certificate.git
+cd krenn-gu-6x3-certificate && git checkout c04696e515e0c02be140353fb52ea60c62e827b1
+ls notes/
+```
+
+The section map, so a future session knows what is there before spending tokens on it:
+
+* `2026-07-23-mixed-weight-program.md` (1,274 lines) is the important one. Section 1 is the
+  gauge quotient and the 15-dimensional target-stabilising action. Section 6 proves the
+  universal star-anchor and two-colour pencil theorems and relates them to permanental
+  algebra. Section 7 lists his own six next bets. **Section 9 is a contraction program**:
+  9.1 the generic three-colour contraction, 9.2 an exceptional-vector correction and
+  recursive closure, 9.3 a forced supply of matrix units, 9.4 the first higher Tutte
+  obstruction, 9.5 saturated weighted-SDR blockers, 9.8 a finite target-matching cover.
+* `2026-07-23-universal-nullstellensatz.md` (272 lines): the common contraction identity,
+  the star-anchor, pair-pencil and full-column schemas, and section 7, the shortest route
+  into Lean.
+* `2026-07-23-erhard-stratum-certificate.md`, `2026-07-23-unrestricted-certificate.md`,
+  `2026-07-23-baseline.md`: the audited certificate, its scope, and the first numerical run.
+
+Why this matters for direction A: the contraction lens, which is the natural attack on the
+missing inductive step, is **already developed at $n = 6$** in his section 9, including the
+correction terms that a naive contraction misses. Starting that lens from scratch would
+repeat work. Read section 9 and section 1 first, then ask the only question that matters
+here: does any of it survive the passage from $n = 6$ to general $n$, or is every step of it
+tied to the 15 perfect matchings of $K_6$?
 
 ### B. Counterexample hunt in the cyclotomic regime, now at $n = 8$
 
