@@ -1,0 +1,15 @@
+{
+  "name": "c6-d2",
+  "comment": "The standard 6-vertex GHZ experiment graph of dimension 2: a 6-cycle whose two perfect matchings are its two colour classes. |GHZ_{6,2}> in the language of Krenn-Gu-Zeilinger.",
+  "n": 6,
+  "colours": 2,
+  "root_of_unity": 1,
+  "edges": [
+    {"u": 0, "v": 1, "cu": 0, "cv": 0},
+    {"u": 2, "v": 3, "cu": 0, "cv": 0},
+    {"u": 4, "v": 5, "cu": 0, "cv": 0},
+    {"u": 1, "v": 2, "cu": 1, "cv": 1},
+    {"u": 3, "v": 4, "cu": 1, "cv": 1},
+    {"u": 5, "v": 0, "cu": 1, "cv": 1}
+  ]
+}

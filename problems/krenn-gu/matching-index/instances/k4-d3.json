@@ -1,0 +1,15 @@
+{
+  "name": "k4-d3",
+  "comment": "The only known graph of matching index >= 3 (Krenn-Gu-Zeilinger 2017, Figure 4 of arXiv:2407.00303): K4 whose three perfect matchings are the three colour classes of a 1-factorisation. Reproducing dimension 3 here is the gate this problem's search code has to pass before it is trusted.",
+  "n": 4,
+  "colours": 3,
+  "root_of_unity": 1,
+  "edges": [
+    {"u": 0, "v": 1, "cu": 0, "cv": 0},
+    {"u": 2, "v": 3, "cu": 0, "cv": 0},
+    {"u": 0, "v": 2, "cu": 1, "cv": 1},
+    {"u": 1, "v": 3, "cu": 1, "cv": 1},
+    {"u": 0, "v": 3, "cu": 2, "cv": 2},
+    {"u": 1, "v": 2, "cu": 2, "cv": 2}
+  ]
+}

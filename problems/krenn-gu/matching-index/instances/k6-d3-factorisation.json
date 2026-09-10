@@ -1,0 +1,18 @@
+{
+  "name": "k6-d3-factorisation",
+  "comment": "The first thing anyone tries at n = 6: take three 1-factors of K6 as three monochromatic colour classes. Bogdanov's lemma says this cannot work with positive weights, and the report shows why concretely: count the non-monochromatic colourings that carry exactly one matching.",
+  "n": 6,
+  "colours": 3,
+  "root_of_unity": 1,
+  "edges": [
+    {"u": 0, "v": 5, "cu": 0, "cv": 0},
+    {"u": 1, "v": 4, "cu": 0, "cv": 0},
+    {"u": 2, "v": 3, "cu": 0, "cv": 0},
+    {"u": 1, "v": 5, "cu": 1, "cv": 1},
+    {"u": 0, "v": 2, "cu": 1, "cv": 1},
+    {"u": 3, "v": 4, "cu": 1, "cv": 1},
+    {"u": 2, "v": 5, "cu": 2, "cv": 2},
+    {"u": 1, "v": 3, "cu": 2, "cv": 2},
+    {"u": 0, "v": 4, "cu": 2, "cv": 2}
+  ]
+}

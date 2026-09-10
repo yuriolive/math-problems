@@ -1,0 +1,16 @@
+{
+  "name": "k4-d2-interference",
+  "comment": "Dimension 2 on 4 vertices where one non-monochromatic colouring (0,0,1,1) is feasible with two matchings whose weights cancel: 1 * (-1) + 1 * 1 = 0. Exercises destructive interference and bichromatic edges, which is the regime Bogdanov's lemma forces any counterexample into.",
+  "n": 4,
+  "colours": 2,
+  "root_of_unity": 1,
+  "edges": [
+    {"u": 0, "v": 1, "cu": 0, "cv": 0},
+    {"u": 2, "v": 3, "cu": 0, "cv": 0},
+    {"u": 0, "v": 2, "cu": 1, "cv": 1},
+    {"u": 1, "v": 3, "cu": 1, "cv": 1},
+    {"u": 2, "v": 3, "cu": 1, "cv": 1, "w": [[-1, 1]]},
+    {"u": 0, "v": 3, "cu": 0, "cv": 1},
+    {"u": 1, "v": 2, "cu": 0, "cv": 1}
+  ]
+}
