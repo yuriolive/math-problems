@@ -156,8 +156,55 @@ Credit them wherever this problem builds on their numbers.
 
 ## 3. Measured state
 
-Empty. No checker has run yet. Numbers here will come from the compiled checker, never from
-a search kernel; a count that hit its cap prints as `N+`.
+Every number below is the compiled checker's, never a search kernel's. A trailing `+` means
+the solver's budget ran out before the maximum was settled, so the value is a lower bound
+and the cell is **not** an exact value.
+
+$M_{\text{unif}}(n,k)$, largest $k$-uniform 3-sunflower-free family on $[n]$:
+
+| $n$ | best $k$ | $M_{\text{unif}}$ | $M^{1/n}$ | exact? |
+| ---: | ---: | ---: | ---: | :--- |
+| 6 | 3 | 10 | 1.467799 | exact |
+| 7 | 4 | 15 | 1.472357 | exact |
+| 8 | 4 | 24 | 1.487738 | exact |
+| 9 | 5 | 42+ | 1.514820 | lower bound |
+| 10 | 6 | 70+ | **1.529360** | lower bound |
+
+Complete exact rows for $n \le 8$ and the full $(n,k)$ grid to $n = 12$ are in the sweep's
+JSON output; the peak $k$ tracks roughly $0.6n$.
+
+**Best verified lower bound: $\mu_3 \ge 1.529360$**, from 70 sets at $n = 10$, $k = 6$.
+That is **below** the citable record of 1.551, so it is not an improvement on anything
+published — it is where this repository's search currently reaches.
+
+### What produced these, and how they are cross-checked
+
+* `verifier/` — the checker. Two independent implementations inside it, a bitmask counter
+  and a reference over sorted element vectors sharing no code, agree on every cell to
+  $n = 7$.
+* `verifier/src/bin/brute.rs` — exhaustive branch and bound, a different algorithm from
+  "encode and ask a solver". Agrees with SAT on every exact cell to $n = 6$.
+* `sat/sweep.py` — CaDiCaL 1.9.5 via python-sat, cells across processes. Every satisfiable
+  model is re-derived by the checker before it counts.
+* `cuda/swarm_857.cu` — annealer, one family per block. Its own energy counter was
+  differentially tested against the checker on six cases and agrees exactly.
+
+### Where each instrument stops
+
+| Instrument | Best at $n{=}10,k{=}6$ | Note |
+| :--- | ---: | :--- |
+| CaDiCaL | **70** | 18+ minutes could not settle whether 71 exists |
+| annealer, per block | 60 | stalls at energy 40 for $m = 70$ |
+| annealer, per thread | 44 | superseded |
+
+The annealer underperforms SAT where both can run, which is the opposite of the reasoning
+that motivated building it. Its case is that it reaches $n \ge 14$ where SAT cannot, and
+that case is not yet demonstrated.
+
+The $m = 70$ stall sits at energy exactly 40 across three seeds and two structurally
+different kernels. The checker confirms 40 is the true count each time, so it is a genuine
+local minimum rather than a counting bug — the move set is getting trapped, and a move that
+retargets two members at once is the obvious thing to try next.
 
 ## 4. Go/no-go gate
 

@@ -231,9 +231,31 @@ def solve_cell(n: int, k: int, budget: int) -> Cell:
         elif status == "unsat":
             hi = mid
         else:
-            cell.status = "lower-bound-only"
-            cell.note = f"budget exhausted at s={mid}; maximum lies in [{lo}, {hi - 1}]"
-            return cell
+            # Bisection is better on cells that finish and worse on cells that do not: a
+            # probe that exhausts its budget establishes nothing about the sizes it
+            # skipped, whereas stepping upward banks a verified family at every step. The
+            # frontier cells are exactly the ones that time out, so fall back to stepping
+            # rather than returning the bracket's lower end.
+            step_from = lo
+            while True:
+                nxt = step_from + 1
+                if nxt >= hi:
+                    cell.status = "exact"
+                    return cell
+                status2, model2 = try_size(nxt)
+                if status2 == "sat":
+                    step_from = max(nxt, len(model2))
+                    cell.best, cell.best_family = step_from, model2
+                    continue
+                if status2 == "unsat":
+                    cell.status = "exact"
+                    return cell
+                cell.status = "lower-bound-only"
+                cell.note = (
+                    f"budget exhausted bisecting at s={mid}, then stepping at s={nxt}; "
+                    f"maximum lies in [{cell.best}, {hi - 1}]"
+                )
+                return cell
 
     cell.status = "exact"
     return cell
