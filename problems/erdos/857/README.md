@@ -115,9 +115,14 @@ here cannot succeed however far it is pushed. Nothing found settles this. Peeble
 data (below) caps the Sperner capacity near $1.5874$, and uniform implies Sperner, so the
 uniform capacity lies somewhere in $[1.529, 1.5874]$ — possibly above 1.551, possibly not.
 
-**Deciding that is the gate now.** Either find a uniform family beating 1.551, or determine
+**Deciding that is the gate.** Either find a uniform family beating 1.551, or determine
 that the uniform capacity is below it, in which case the honest move is to switch to
 non-uniform families and adopt DEGKM's product lemma rather than the direct sum.
+
+The $k = n-3$ diagonal was pursued as an alternative target on the grounds that it is a
+finite question with a definite answer. It was already settled in 2010 — see §1b. Both
+routes out of this problem are now either blocked or closed, and nothing in this directory
+is new mathematics.
 
 ## 2. What would count as progress
 
@@ -172,12 +177,53 @@ $M_{\text{unif}}(6,3) = 10$ also matches a published explicit witness: Kostochka
 Construction 2 lists the ten triples, and the same object is Frankl–Füredi's $H_6$, whose
 iterated blow-up gives the $2/7$ lower bound for $\pi(K_4^-)$.
 
-**The $k = n-3$ diagonal is the interesting one.** It is the $\pi(K_4^-) = 2/7$ conjecture,
-where the best upper bound is $\approx 0.2871$ by flag algebras (Baber–Talbot). Whether
-$\mathrm{ex}(7, K_4^-) = 15$ and $\mathrm{ex}(8, K_4^-) = 22$ are published could not be
-determined, so **novelty there is unconfirmed, not established** — check the hypergraph
-Turán small-case literature (Keevash's survey, de Caen, flag-algebra papers) before
-claiming it.
+### The $k = n-3$ diagonal: checked, and already published
+
+That diagonal is the $\pi(K_4^-) = 2/7$ conjecture, so it looked like the better target than
+the capacity. It was checked before any more work went into it, and the answer is that
+**Markström and Talbot computed $\mathrm{ex}(n, K_4^-)$ exactly for $n \le 19$ in 2010** —
+*On the density of 2-colourable 3-graphs in which any four points span at most two edges*,
+J. Combinatorial Designs **18**(2) 105–114,
+[doi:10.1002/jcd.20223](https://doi.org/10.1002/jcd.20223), with the extremal hypergraphs
+archived online. Li, Stinson, van Rees and Wei had reached $n \le 12$ earlier (Congressus
+Numerantium 183, 2006).
+
+| $n$ | 6 | 7 | 8 | 9 | 10 | 11 | 12 | … | 19 | 20 |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: | ---: | :---: |
+| published | 10 | 15 | 22 | 32 | 44 | 60 | 80 | … | 322 | **open** |
+| this repository | 10 | 15 | 22 | 32+ | 40+ | 50+ | 61+ | | | |
+
+**No new mathematics here.** Every exact value this repository computed on the diagonal
+reproduces a published one, and the $n = 9$ lower bound of 32 lands exactly on the
+published value. Beyond $n = 9$ our numbers are below theirs.
+
+What it does establish is that the checker reproduces published Turán numbers it was never
+told about, on top of Mantel and Frankl–Füredi's $H_6$ — three independent agreements with
+the literature.
+
+**The identity itself is confirmed.** `verifier/src/bin/turan.rs` computes
+$\mathrm{ex}(n, K_4^-)$ directly in terms of vertices and edges, sharing no code with the
+sunflower path, and agrees with $M_{\text{unif}}(n, n-3)$ for $n = 4 \ldots 7$; the values
+then match Markström–Talbot's independently. The clean statement: for triples
+$a = A^c, b = B^c, c = C^c$, the sunflower condition $A \cap B = A \cap C = B \cap C$ is
+equivalent to $a \cup b = a \cup c = b \cup c$, whose only solution is three triples inside
+a common 4-set. $|U| = 5$ is impossible by inclusion–exclusion and $|U| = 6$ forces two of
+the triples to coincide, so there is no degenerate case.
+
+**What remains open, and why it is a genuine instrument gap.** $\mathrm{ex}(20, K_4^-)$ is
+unsettled, as is Markström–Talbot's Conjecture 4 on uniqueness of the extremal graph for
+$n \ge 11$. Their computation used integer programming with `nauty` for isomorph rejection,
+at roughly **300 CPU-core-years**, and a literature search found **no SAT or
+SAT-modulo-symmetries attack on hypergraph Turán numbers at all** — Subercaseaux–Heule,
+MathCheck and Kirchweger–Szeider's SMS were all checked. Whether that gap is exploitable is
+a separate question: $\binom{20}{3} = 1140$ variables against a 300-core-year prior attempt
+needs a symmetry-breaking design before it is worth starting.
+
+**A small certain thing.** OEIS [A125622](https://oeis.org/A125622) holds `2, 5, 10, 15, 22`
+under the name "Minimal number of blocks in any splitting system", evidently pasted from a
+sibling template — the quantity is a maximum, and it is $\mathrm{ex}(n, K_4^-)$. It could
+be renamed, extended to $n = 19$ from Markström–Talbot, and cited properly. No new
+mathematics required.
 
 ## 2b. Prior art, and what it settles
 
