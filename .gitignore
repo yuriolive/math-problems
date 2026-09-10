@@ -49,3 +49,7 @@ Thumbs.db
 *.out
 *.toc
 *.synctex.gz
+
+# CUDA build outputs for problems/erdos/857
+problems/erdos/857/cuda/*.exp
+problems/erdos/857/cuda/*.lib
