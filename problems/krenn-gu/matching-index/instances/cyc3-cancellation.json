@@ -1,0 +1,15 @@
+{
+  "name": "cyc3-cancellation",
+  "comment": "Not a GHZ graph, but an arithmetic fixture. The single feasible colouring (0,0,1,1) has three matchings of weights 1, z, z^2 with z = exp(2 pi i / 3), so its weight is 1 + z + z^2 = 0 exactly. Any checker that tests weights in floating point or forgets to reduce modulo Phi_3 gets this wrong.",
+  "n": 4,
+  "colours": 2,
+  "root_of_unity": 3,
+  "edges": [
+    {"u": 0, "v": 1, "cu": 0, "cv": 0, "w": [[1, 1]]},
+    {"u": 2, "v": 3, "cu": 1, "cv": 1, "w": [[1, 1]]},
+    {"u": 0, "v": 2, "cu": 0, "cv": 1, "w": [[1, 1]]},
+    {"u": 1, "v": 3, "cu": 0, "cv": 1, "w": [[0, 1], [1, 1]]},
+    {"u": 0, "v": 3, "cu": 0, "cv": 1, "w": [[1, 1]]},
+    {"u": 1, "v": 2, "cu": 0, "cv": 1, "w": [[0, 1], [0, 1], [1, 1]]}
+  ]
+}

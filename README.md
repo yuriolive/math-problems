@@ -135,6 +135,7 @@ Not stylistic. Each of these exists because violating it produced a false result
 | Problem | Status |
 | :--- | :--- |
 | [`erdos/64`](./problems/erdos/64/) — Erdős–Gyárfás conjecture | Open. No counterexample found and published bounds unchanged; a machine-checked strict density bound for a minimal counterexample. [Paper](./problems/erdos/64/paper/main.pdf) · [details](./problems/erdos/64/README.md) · [roadmap](./problems/erdos/64/ROADMAP.md) |
+| [`krenn-gu/matching-index`](./problems/krenn-gu/matching-index/), the Krenn–Gu conjecture | Open, and carrying a 3.000 EUR prize. Exact checker in place and reproducing the one published graph of matching index 3; the target is the smallest undecided case, $n = 6$ with bichromatic edges and multi-edges allowed. [details](./problems/krenn-gu/matching-index/README.md) · [roadmap](./problems/krenn-gu/matching-index/ROADMAP.md) |
 
 Candidates screened against the intake filter but not started are in
 [`problems/CANDIDATES.md`](./problems/CANDIDATES.md). Twenty were scouted and two survived;

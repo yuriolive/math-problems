@@ -1,0 +1,89 @@
+{
+  "name": "cyc3-no-cancellation",
+  "comment": "Same support as cyc3-cancellation with one weight changed from z^2 to z, so the colouring (0,0,1,1) has weight 1 + 2z != 0. The checker must report exactly one violation carrying the exact weight [[1,1],[2,1]].",
+  "n": 4,
+  "colours": 2,
+  "root_of_unity": 3,
+  "edges": [
+    {
+      "u": 0,
+      "v": 1,
+      "cu": 0,
+      "cv": 0,
+      "w": [
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "u": 2,
+      "v": 3,
+      "cu": 1,
+      "cv": 1,
+      "w": [
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "u": 0,
+      "v": 2,
+      "cu": 0,
+      "cv": 1,
+      "w": [
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "u": 1,
+      "v": 3,
+      "cu": 0,
+      "cv": 1,
+      "w": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "u": 0,
+      "v": 3,
+      "cu": 0,
+      "cv": 1,
+      "w": [
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "u": 1,
+      "v": 2,
+      "cu": 0,
+      "cv": 1,
+      "w": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ]
+    }
+  ]
+}
