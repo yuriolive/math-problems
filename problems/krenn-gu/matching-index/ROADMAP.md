@@ -99,7 +99,10 @@ integer conjecture; none means the route is live. Encoders are in [`sat/`](./sat
 stalled for 16 minutes at $n = 6$; `parity_cryptominisat.py` (XOR-native, optional
 `pycryptosat` dependency, symmetry-breaking fix of one colour-0 matching) is the one to use.
 **Measured on 10 September 2026:** $n = 4$ satisfiable in 0.0 s with both encoders (the $K_4$
-graph); $n = 6$: undecided at 04:17 UTC, CryptoMiniSat still running since 04:13 UTC; the final state is recorded in the session's last commit.
+graph); $n = 6$: **undecided.** CryptoMiniSat ran from 04:13 UTC to 04:36 UTC without an answer and was stopped
+for a credit reset. The go/no-go for this route is still open; the next run should add
+colour-symmetry breaking (fix a second target matching up to the stabiliser of the first,
+Gallagher's eight-orbit table) and Gaussian elimination on the XOR layer.
 
 ### H. The induction lemma hunt (started, not finished)
 
@@ -112,8 +115,9 @@ first derivative of the Hafnian, colour-specific cuts, the Hamming hierarchy of 
 colourings, GF(2) and Pfaffians, tensor flattenings, transversal Fourier transform), each
 required to state a precise lemma and ship an exact-arithmetic test against `ghzcheck`, then
 three skeptics per proposal and a judge. It was launched at 04:10 UTC on 10 September 2026
-on a 4-core container (so two agents at a time) and is being stopped at the credit reset (after 04:17 UTC) before the
-skeptic pass could complete. Partial results, if any completed, are recorded in the session's last commit.
+on a 4-core container (so two agents at a time) and stopped at 04:36 UTC for a credit reset. Two of the six proposers (contraction, colour cuts) had
+started and were still reading the sources; none returned a proposal, no skeptic ran, and no
+files were written. There are no results from this run.
 
 Nothing from the hunt is in the live directions above until it has survived the skeptic
 pass; the record of what was proposed is here so the next run does not start from zero.

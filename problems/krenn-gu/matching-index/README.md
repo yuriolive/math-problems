@@ -265,7 +265,7 @@ the certificate, and prints the axiom closure of `eqSystem6_no_solution_d3`. A s
 of the pinned tree finds no `sorry` or `admit` token in any `.lean` file and `native_decide`
 in 10 files. **Not finished in the session that started it.** The Mathlib cache fetch completed at
 03:23 UTC; `lake build KrennGuCertificate` then ran on the 4-core box and had produced
-186 compiled objects by 04:17 UTC, when the session had to stop for a credit reset.
+345 compiled objects by 04:36 UTC, when the session had to stop for a credit reset.
 No axiom closure was printed here, so the $n = 6$ row above is **trusted, not verified**.
 Reproduce with `tools/audit_gallagher_certificate.sh` on a machine with 8 or more cores; the
 author reports 22 minutes there.
