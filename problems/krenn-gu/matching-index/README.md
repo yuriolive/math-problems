@@ -15,10 +15,19 @@
 
 > **Status.** Open, and actively contested. $\mu(K_4) = 3$ is the only known instance of
 > matching index $3$. In the unrestricted setting (multi-edges and bichromatic edges
-> allowed, weights complex), nothing is settled beyond $n = 4$ except by graph class.
-> Mario Krenn and Dominik Leitner offer **3.000 EUR** for the first proof or counterexample
-> published in a peer-reviewed journal, and a **1.000 EUR** best-paper award for work on
-> inherited vertex colourings ([Krenn's problem page](https://mariokrenn.wordpress.com/graph-theory-question/)).
+> allowed, weights complex) the settled cases are $n = 4$ (Mantey 2023, Gröbner basis) and,
+> since 24 July 2026, $n = 6$: a Lean 4 certificate by Alexis Gallagher proves
+> `¬ ∃ W : WeightsN 6 3 ℂ, EqSystemN 6 3 W` against the Formal Conjectures definitions
+> ([repository](https://github.com/algal/krenn-gu-6x3-certificate), pinned commit `c04696e`,
+> [explainer](https://krenngufun.org/)). That result is machine-checked but not
+> peer-reviewed, its axiom closure includes `Lean.ofReduceBool` and `Lean.trustCompiler`
+> from `native_decide`, its status pull request to Formal Conjectures
+> ([#4610](https://github.com/google-deepmind/formal-conjectures/pull/4610)) is still open,
+> and Krenn's page does not list it. The first undecided unrestricted case is therefore
+> $n = 8$. Mario Krenn and Dominik Leitner offer **3.000 EUR** for the first proof or
+> counterexample published in a peer-reviewed journal, and a **1.000 EUR** best-paper award
+> for work on inherited vertex colourings
+> ([Krenn's problem page](https://mariokrenn.wordpress.com/graph-theory-question/)).
 
 ## 0. Intake
 
@@ -73,13 +82,32 @@ climb.
 > There usually is, and it is usually far more tractable. Keep it one flag away
 > from the main objective, and never conflate a hit on it with the harder claim.
 
-**Answer.** Yes, and it is unusually sharp: **decide $n = 6$ in the unrestricted setting.**
-Table 2 of [arXiv:2304.06407](https://arxiv.org/abs/2304.06407) lists the state of the art by
-regime, and the row with both multi-edges and bichromatic edges allowed stops at $n = 4$
-(Mantey, by Gröbner basis). The $n = 6$ and $n = 8$ SAT results assume no bichromatic edges;
-the $n/\sqrt{2}$ bound assumes a simple skeleton. Nothing published decides whether a
-6-vertex GHZ graph of dimension 3 exists when multi-edges *and* bichromatic edges are both
-allowed.
+**Answer.** Yes, at two sizes, and the smaller one moved while this directory was being
+written. Table 2 of [arXiv:2304.06407](https://arxiv.org/abs/2304.06407) lists the published
+state of the art by regime; the row with both multi-edges and bichromatic edges allowed
+stops at $n = 4$. The $n = 6$ and $n = 8$ SAT results assume no bichromatic edges, and the
+$n/\sqrt{2}$ bound assumes a simple skeleton. On that basis the sharp gap was *decide $n = 6$
+unrestricted*, and the first version of this README targeted it.
+
+Gallagher's July 2026 certificate (see Status) closes exactly that gap, by exactly the
+two-layer method this roadmap had proposed: a support sieve, exact Laurent and
+ideal-membership obstructions, eight symmetry orbits of target-matching triples, and
+CaDiCaL refutations replayed through Lean's verified LRAT checker. Its statement is the
+Formal Conjectures entry `eqSystem6_no_solution_d3`, which is the $d = 3$ case, and by R2
+below it settles every $d \ge 3$ at $n = 6$. So the published-open gaps are now:
+
+* **Decide $n = 8$, $d = 3$ unrestricted**: Formal Conjectures entry
+  `eqSystem8_no_solution_d3`, listed `research open` at the revision Gallagher pins
+  (`e751934`). Nothing published or certified touches it.
+* **The corollaries Formal Conjectures still lists as open.** At that revision
+  `eqSystem6_no_solution_d4`, `_d5`, `_ge3`, and the $\mathbb{R}$, $\mathbb{Z}$ and
+  $\{-1,0,1\}$ variants at $n = 6$ are all `research open`. Each follows from Gallagher's
+  theorem in a few lines once R2 (colour restriction) is formalised against the same
+  definitions, and a real or integer solution is a complex one. Small, concrete, and exactly
+  the shape of contribution the Lean lane here is built for.
+* **An independent audit of the $n = 6$ certificate.** The repository's own rule: a result
+  is trusted here once its axiom closure has been reproduced by this repository's tooling,
+  not because a website says so. See §3.
 
 Two elementary reductions turn that gap into a single finite question, and both are recorded
 here because they shape every line of code that follows.
@@ -97,7 +125,8 @@ here because they shape every line of code that follows.
   the single statement *no GHZ graph has $n \ge 6$ vertices and $3$ colours*, presumably
   folklore, and one line to check.
 
-R2 is the reason this problem directory targets $d = 3$ and nothing else. An upper bound of
+R2 is the reason this problem directory targets $d = 3$ and nothing else, and the reason
+one $n = 6$ certificate settles every dimension at $n = 6$. An upper bound of
 the form $\mu \le f(n)$ settles the conjecture only where $f(n) < 3$, and every published
 bound is $\ge 3$ for every $n > 4$. The results that actually bite are the ones that exclude
 dimension 3 outright in a class: vertex connectivity $\le 2$, maximum degree $\le 3$,
@@ -120,23 +149,30 @@ the edge and that is the real risk on this problem.
 
 Hard limits: $n \le 16$ (bitmask), $d \le 16$, weights in $\mathbb{Q}(\zeta_m)$ for
 $m \le 64$, matchings capped at $2 \times 10^7$ by default and reported as `unknown` rather
-than truncated when the cap is hit. The target window is $n \in \{6, 8\}$, comfortably
-inside. The measurement command is in §3.
+than truncated when the cap is hit. The target $n = 8$ is comfortably inside. The
+measurement command is in §3.
 
-The comparison that matters, though, is the algebraic one: deciding $n = 6$ means deciding
-whether **726 cubic equations in 135 complex unknowns** have a common solution with three
-prescribed non-vanishing values, modulo a $(\mathbb{C}^*)^{18}$ gauge group and an
-$S_6 \times S_3$ symmetry. Mantey's $n = 4$ instance, 78 equations in 54 unknowns, already
-needed a Gröbner computation. Ours is a factor of ten larger in both directions, and no
-published computation has done it. That is the gate: the roadmap's first milestone is a
-decision procedure that reproduces Mantey's $n = 4$ answer, and if it cannot do $n = 4$
-cheaply it will not do $n = 6$ at all.
+The comparison that matters is the algebraic one, and Gallagher's $n = 6$ certificate is
+the first real data point on its scale. Deciding $n = 6$ took **726 cubic equations in 135
+unknowns**, reduced by $S_6 \times S_3$ to 8 orbits of target-matching triples (out of
+$15^3 = 3{,}375$), each a CNF of about 12,330 variables and 59,000 to 69,000 clauses, refuted
+by CaDiCaL and replayed in Lean in 22 minutes on 8 cores. At $n = 8$ the same objects are
+**6,558 equations in 252 unknowns**, $105^3 = 1{,}157{,}625$ target triples before
+quotienting by $S_8 \times S_3$, and $6{,}561 \times 105 = 688{,}905$ matching variables per
+branch before any symmetry. That is two to three orders of magnitude on every axis, and
+whether the support-sieve plus Laurent-obstruction method still closes every branch there
+is precisely the open engineering question. The gate is unchanged: a decision procedure that
+reproduces Mantey's $n = 4$ answer in seconds, then Gallagher's $n = 6$ orbit table, before
+any $n = 8$ compute is spent.
 
-**Verdict.** Pursue, with the risk named. The checker exists and reproduces the one published
-extremal graph; the target is a specific published gap; the reach is measured. The failure
-mode is not compute but the algebra layer, and the first milestone is designed to expose it
-in days rather than months. See [`ROADMAP.md`](./ROADMAP.md) for the incumbent-race risk,
-which is the second reason to keep the scope at $n = 6$.
+**Verdict.** Pursue, with two risks named. The checker exists and reproduces the one
+published extremal graph; the reach of the enumeration is measured; the target is a specific
+Formal Conjectures entry nobody has closed. The first risk is the algebra at $n = 8$, exposed
+early by the gate above. The second is the field: an individual with a solver stack closed
+$n = 6$ in the two days this directory was being planned, and the DeepMind and Krenn group
+has a general no-go theorem in preparation. The cheap, certain deliverables (the Lean
+corollaries and the independent audit) go first for that reason. See
+[`ROADMAP.md`](./ROADMAP.md).
 
 ## 1. Known results
 
@@ -155,17 +191,24 @@ multi-edges and bichromatic edges allowed with arbitrary complex weights.
 | Unrestricted, minimum degree $3$ | $\mu(G) \le 3$ | same, Theorem 12 |
 | Unrestricted, minimal counterexample | must be $4$-connected | same, Theorem 10 |
 | Unrestricted, $d \ge n$ ($n$ even) | no GHZ graph exists | AlphaProof Nexus with Krenn, §4 of [arXiv:2605.22763](https://arxiv.org/abs/2605.22763); Krenn, Firsching, Tsoukalas, Gajjala, Gu, Chaudhuri, *A Tensor-Algebraic No-Go Theorem for High-Dimensional Photonic GHZ States*, in preparation |
+| Unrestricted, $n = 6$, $d = 3$ (hence every $d \ge 3$ by R2) | no GHZ graph exists | Gallagher, *Krenn-Gu 6×3 certificate*, Lean 4.27.0, [pinned commit c04696e](https://github.com/algal/krenn-gu-6x3-certificate/tree/c04696e515e0c02be140353fb52ea60c62e827b1), 24 July 2026. Machine-checked; axiom closure `propext, Classical.choice, Lean.ofReduceBool, Lean.trustCompiler, Quot.sound`; not peer-reviewed; [Formal Conjectures PR #4610](https://github.com/google-deepmind/formal-conjectures/pull/4610) open |
 | Prize | 3.000 EUR for a proof or a counterexample in a peer-reviewed journal; 1.000 EUR best-paper award | [Krenn's problem page](https://mariokrenn.wordpress.com/graph-theory-question/) |
 
 The dates on Krenn's page are the authoritative record of what is claimed when: the
 $d \ge n$ entry is dated May 2026 and the Lean formalisation of the conjecture July 2026.
+Gallagher's $n = 6$ certificate is not on that page as of 10 September 2026. The Formal
+Conjectures file at the revision it pins states the benchmark family precisely: `EqSystemN N
+D W` is `∀ ι, pmSumN N D W ι = if allEqual ι then 1 else 0` over `W : EdgeN N D → ℂ`, so zero
+weights and every sub-support are covered, and the entries open there are `eqSystem6_*` for
+$d \in \{3,4,5\}$ and $d \ge 3$, `eqSystem8_no_solution_d3`, `eqSystem10_*` for $d = 3..9$,
+$n = 12, 14, 16$ at $d = 3$, the general `eqSystem_no_solution_ge6_ge3`, and the
+$\mathbb{R}$, $\mathbb{Z}$ and $\{-1,0,1\}$ variants.
 
 **What the open region actually is.** Combining R2 with the table: a counterexample has
-$n \ge 6$ even, exactly 3 colours, a $4$-connected skeleton, a vertex of degree $\ge 4$, at
-least one bichromatic edge, and at least one non-monochromatic colouring whose matchings
-cancel. At $n = 6$, a $4$-connected skeleton on 6 vertices is $K_6$ minus a matching, and by
-R1 all four of those live inside the fully loaded $K_6$. So the whole $n = 6$ case is one
-system of equations.
+$n \ge 8$ even (granting Gallagher's certificate), exactly 3 colours, a $4$-connected
+skeleton, a vertex of degree $\ge 4$, at least one bichromatic edge, and at least one
+non-monochromatic colouring whose matchings cancel. By R1 the whole $n = 8$ case is one
+system: 252 unknowns, 6,561 equations.
 
 ## 2. What would count as progress
 
@@ -174,16 +217,17 @@ In descending order of value, and each one is a separate flag:
 1. **A counterexample.** A coloured, weighted multi-graph on $n > 4$ vertices whose checker
    report has `"counterexample": true`. Exact weights, exit code 0. Worth 3.000 EUR and a new
    quantum interference effect.
-2. **Deciding $n = 6$ unrestricted.** Either a counterexample as above, or a machine-checked
-   proof that the 726 cubic equations in 135 unknowns have no solution with the three
-   monochromatic weights non-zero. This is the first unrestricted result past $n = 4$ in the
-   literature.
-3. **Deciding $n = 6$ for a named sub-regime**, with the regime stated as a theorem rather
-   than as a search bound, for example all supports whose non-monochromatic colourings carry
-   at most two matchings, where the system is binomial and decidable by integer linear
-   algebra rather than by Gröbner basis.
-4. **A reusable exact decision procedure** for these systems that reproduces Mantey's $n = 4$
-   result in seconds. Nothing published does this; Mantey's own computation is a one-off.
+2. **Deciding $n = 8$ unrestricted** (`eqSystem8_no_solution_d3`). Either a counterexample
+   as above, or a machine-checked proof that the 6,558 cubic equations in 252 unknowns have
+   no solution with the three monochromatic weights non-zero.
+3. **The Lean corollaries at $n = 6$.** Formalise R2 against the Formal Conjectures
+   definitions and derive `eqSystem6_no_solution_d4`, `_d5`, `_ge3` and the real, integer
+   and $\{-1,0,1\}$ variants from Gallagher's theorem. Small, certain, and citable.
+4. **An independent reproduction of Gallagher's axiom closure** with this repository's
+   tooling, recorded in §3, so that the $n = 6$ row above is verified here rather than
+   trusted.
+5. **A reusable exact decision procedure** that reproduces Mantey's $n = 4$ result and
+   Gallagher's eight-orbit $n = 6$ table in seconds. Nothing published does this as a tool.
 
 Not progress: a numerical near-miss, an upper bound of the form $\mu \le f(n)$ with
 $f(n) \ge 3$ (implied by the conjecture, see R2), or a search that establishes only that
@@ -211,7 +255,20 @@ uv run python -m unittest discover -s tests
 | `k6-d3-factorisation` | 4 | 4 | 0 | three 1-factors of $K_6$: one non-monochromatic colouring with a single matching, so no weighting of this support can work: Bogdanov's lemma, made concrete |
 | $K_6$, all 135 slots | 10,935 | 729 | 0 | all-ones weights; 726 non-monochromatic colourings each carry $\ge 2$ matchings, so no support-level obstruction, so the algebra has to decide it |
 
-Status of the search itself: **not started.** No claim is made here about $\mu(K_6)$.
+| $K_8$, all 252 slots | 688,905 | 6,561 | 0 | all-ones weights, 0.31 s; the enumeration side of the $n = 8$ target |
+
+**Independent audit of the $n = 6$ certificate.** Cloned
+[`algal/krenn-gu-6x3-certificate`](https://github.com/algal/krenn-gu-6x3-certificate) at
+`c04696e` into a clean container (4 cores, 15 GB), installed Lean 4.27.0 through `elan`, and
+ran the author's `scripts/verify_release.sh`, which checks 50 artifact SHA-256 sums, builds
+the certificate, and prints the axiom closure of `eqSystem6_no_solution_d3`. A source scan
+of the pinned tree finds no `sorry` or `admit` token in any `.lean` file and `native_decide`
+in 10 files. **The release script is running in that container at the time of this commit; its axiom
+closure and wall time replace this sentence when it finishes, and until then the $n = 6$
+row above is trusted, not verified.**
+
+Status of the search itself: **not started.** No claim is made here about $\mu(K_8)$, and the
+claim about $\mu(K_6)$ is Gallagher's, trusted to exactly the extent the audit above says.
 
 ## 4. Layout
 
